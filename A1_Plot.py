@@ -110,7 +110,6 @@ def plot_LIDAR_incremental_traj_and_map(values: gtsam.Values,
     axes.autoscale()
 
     # Pause in between each plot iteration.
-    plt.show()
     plt.pause(time_interval)
 
 def plot_final_LIDAR_traj_and_map(values: gtsam.Values,
