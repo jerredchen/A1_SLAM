@@ -15,7 +15,7 @@ def transform_scan(scan_a, transform):
 def align_nearest_points(scan_a, scan_b):
     """Align the points in scan_a with its nearest neighbor points in scan_b."""
     scan_bT = scan_b[:].T
-    neighbors = NearestNeighbors(n_neighbors=1).fit(scan_bT)
+    neighbors = NearestNeighbors(n_neighbors=1, radius=0.05).fit(scan_bT)
     ind = (neighbors.kneighbors(scan_a.T, return_distance=False).T)[0]
     return (scan_bT[ind]).T
 

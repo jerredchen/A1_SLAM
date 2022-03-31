@@ -8,7 +8,7 @@ import A1_LiDAR_ISAM2
 import A1_Plot
 import gtsam
 from gtsam.symbol_shorthand import B, V, X
-import Personal_ICP
+import vanilla_ICP as vanilla_ICP
 
 
 def optimize_trajectory(bag_name: str,
@@ -113,13 +113,13 @@ def optimize_trajectory(bag_name: str,
                 pim.resetIntegration()
 
                 # Add the odometry factor between consecutive poses.
-                scan_transform = Personal_ICP.icp(scan, scan_prev, initial_transform=scan_transform)
+                scan_transform = vanilla_ICP.icp(scan, scan_prev, initial_transform=scan_transform)
                 graph.add(gtsam.BetweenFactorPose3(X(key_count - 1), X(key_count), scan_transform, icp_noise))
                 initialized_odom = result.atPose3(X(key_count - 1)).compose(scan_transform)
                 initial_estimate.insert(X(key_count), initialized_odom)
                 if key_count > 1:
                     # Add the odometry factor between skipped (non-consecutive) poses for additional constraints.
-                    skip_transform = Personal_ICP.icp(scan, scan_pprev, initial_transform=skip_transform)
+                    skip_transform = vanilla_ICP.icp(scan, scan_pprev, initial_transform=skip_transform)
                     graph.add(gtsam.BetweenFactorPose3(X(key_count - 2), X(key_count), skip_transform, icp_noise))
                     scan_pprev = scan_prev
 

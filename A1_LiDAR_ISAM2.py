@@ -9,7 +9,7 @@ import rosbag
 
 import A1_Plot
 import gtsam
-import Personal_ICP
+import vanilla_ICP
 
 def plot_ICP_correspondences(bag_name, topic_name, i):
     """Plot the correspondences between two consecutive measurements."""
@@ -20,7 +20,7 @@ def plot_ICP_correspondences(bag_name, topic_name, i):
     source_ranges = messages[i+1][1].ranges
     source_scan = ranges_to_points(source_ranges)
     initial_transform = gtsam.Pose2()
-    Personal_ICP.icp(source_scan,
+    vanilla_ICP.icp(source_scan,
                      target_scan,
                      initial_transform=initial_transform,
                      max_iterations=25,
@@ -69,7 +69,7 @@ def optimize_trajectory(bag_name: str,
     # Instantiate the iSAM2 parameters to create the iSAM2 object.
     parameters = gtsam.ISAM2Params()
     parameters.setRelinearizeThreshold(0.1)
-    parameters.setRelinearizeSkip(1)
+    # parameters.setRelinearizeSkip(1)
     isam = gtsam.ISAM2(parameters)
 
     # Declare noise models for the prior pose and the associated noise with ICP.
@@ -96,7 +96,7 @@ def optimize_trajectory(bag_name: str,
         # Initialize scans from the previous iteration.
         if k > 1:
             scan_pprev = scan_prev
-        elif k > 0:
+        if k > 0:
             scan_prev = scan
 
         # Convert the scan from a 1D array of ranges to an array of 2D points in the local pose frame.
@@ -104,14 +104,14 @@ def optimize_trajectory(bag_name: str,
 
         if k > 0:
             # Estimate the transform between two consecutive scan measurements.
-            scan_transform = Personal_ICP.icp(scan, scan_prev, initial_transform=scan_transform)
+            scan_transform = vanilla_ICP.icp(scan, scan_prev, initial_transform=scan_transform)
 
             # Add an odometry factor between two poses and its initial estimate from dead reckoning.
             graph.add(gtsam.BetweenFactorPose2(k - 1, k, scan_transform, ICP_NOISE))
             initialized_odom = result.atPose2(k - 1).compose(scan_transform)
             initial_estimate.insert(k, initialized_odom)
             if k > 1:
-                skip_transform = Personal_ICP.icp(scan, scan_pprev, initial_transform=skip_transform)
+                skip_transform = vanilla_ICP.icp(scan, scan_pprev, initial_transform=skip_transform)
                 graph.add(gtsam.BetweenFactorPose2(k - 2, k, skip_transform, ICP_NOISE))
 
             # Perform an iSAM2 incremental update.
@@ -119,7 +119,7 @@ def optimize_trajectory(bag_name: str,
             result = isam.calculateEstimate()
 
             # Plot the resulting trajectory and map from the new updated estimates.
-            A1_Plot.plot_LIDAR_incremental_traj_and_map(result, scan, k, 0.5, 0.1)
+            A1_Plot.plot_LIDAR_incremental_traj_and_map(result, scan, k, 0.1)
 
             # Clear the graph and initial estimates.
             graph = gtsam.NonlinearFactorGraph()
@@ -150,7 +150,7 @@ def dead_reckoning(bag_name: str,
 
         if k > 0:
             # Estimate the transform between two consecutive scan measurements.
-            scan_transform = Personal_ICP.icp(scan, scan_prev, scan_transform)
+            scan_transform = vanilla_ICP.icp(scan, scan_prev, scan_transform)
             # Compute the next pose through dead reckoning, and plot the resulting map.
             pose = pose.compose(scan_transform)
             A1_Plot.plot_dead_reckoning_map(pose, scan, 0.1, 0.01)

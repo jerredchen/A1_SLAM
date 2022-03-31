@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 import gtsam
-import Personal_ICP
+import vanilla_ICP
 
 def ranges_to_points(ranges) -> np.ndarray:
     """Convert the ranges from the LiDAR into 2D points in the local frame."""
@@ -28,7 +28,7 @@ def ranges_to_points(ranges) -> np.ndarray:
 def IRC_traj_map_PersonalICP(start: int,
                               stop: int,
                               time_interval: float):
-    """Plot the IRC trajectory and map with dead reckoning using the Personal ICP implementation.
+    """Plot the IRC trajectory and map with dead reckoning using the vanilla ICP implementation.
 
     Args:
         start: An integer representing the pose in the IRC dataset trajectory to start plotting.
@@ -39,9 +39,9 @@ def IRC_traj_map_PersonalICP(start: int,
     # Iterate through the .txt file and convert all ranges from the LiDAR into 2D points.
     measurements = []
     with open('data/intel_LASER_.txt') as f:
-      for laser_line in f:
-        ranges = [float(range.strip()) for range in laser_line.split()]
-        measurements.append(ranges_to_points(ranges))
+        for laser_line in f:
+            ranges = [float(range.strip()) for range in laser_line.split()]
+            measurements.append(ranges_to_points(ranges))
 
     plt.figure()
     plt.autoscale()
@@ -52,25 +52,25 @@ def IRC_traj_map_PersonalICP(start: int,
 
     for i in range(start, stop+1):
 
-      # Estimate the transform between two consecutive LiDAR measurements using Personal ICP.
-      target_points = measurements[i]
-      source_points = measurements[i+1]
-      transform = Personal_ICP.icp(source_points, target_points, initial_transform)
+        # Estimate the transform between two consecutive LiDAR measurements using Personal ICP.
+        target_points = measurements[i]
+        source_points = measurements[i+1]
+        transform = vanilla_ICP.icp(source_points, target_points, initial_transform)
 
-      # Compute the new pose through dead reckoning, and reinitialize for the next iteration.
-      pose = pose.compose(transform)
-      initial_transform = transform
-      pose_prev = pose
+        # Compute the new pose through dead reckoning, and reinitialize for the next iteration.
+        pose = pose.compose(transform)
+        initial_transform = transform
+        pose_prev = pose
 
-      # Plot the trajectory from the previous pose to the current pose.
-      x = [pose_prev.x(), pose.x()]
-      y = [pose_prev.y(), pose.y()]
-      plt.plot(x, y, c='mediumseagreen')
+        # Plot the trajectory from the previous pose to the current pose.
+        x = [pose_prev.x(), pose.x()]
+        y = [pose_prev.y(), pose.y()]
+        plt.plot(x, y, c='mediumseagreen')
 
-      # Transform the LiDAR scan points from the local frame to the global frame, and plot the resulting map.
-      source_points = pose.matrix() @ source_points
-      plt.scatter(source_points[0],source_points[1],marker=',',s=1.0,c='k')
-      plt.pause(time_interval)
+        # Transform the LiDAR scan points from the local frame to the global frame, and plot the resulting map.
+        source_points = pose.matrix() @ source_points
+        plt.scatter(source_points[0],source_points[1],marker=',',s=1.0,c='k')
+        plt.pause(time_interval)
     plt.show()
 
 
