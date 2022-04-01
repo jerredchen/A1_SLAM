@@ -34,7 +34,7 @@ def ranges_to_points(ranges) -> np.ndarray:
     # Compute the 2D point where the angle starts at +90 deg, and
     # each range is spaced out in equal increments.
     for i, distance in enumerate(ranges):
-        if 0.05 < distance < np.inf:
+        if 1.5 < distance < 5:
             scan[0][i] = distance*np.cos(np.pi - np.pi*i/180)
             scan[1][i] = distance*np.sin(np.pi - np.pi*i/180)
     # Remove all values in the array that are still 0.
@@ -45,10 +45,7 @@ def ranges_to_points(ranges) -> np.ndarray:
     return scan
 
 def optimize_trajectory(bag_name: str,
-                        topic_name: str,
-                        prior_x_pose_sigma = 1e-5,
-                        prior_y_pose_sigma = 1e-5,
-                        prior_heading_sigma = 1e-4):
+                        topic_name: str):
     """Incrementally optimize the A1's trajectory from LiDAR measurements.
 
     Args:
@@ -73,8 +70,10 @@ def optimize_trajectory(bag_name: str,
     isam = gtsam.ISAM2(parameters)
 
     # Declare noise models for the prior pose and the associated noise with ICP.
+    PRIOR_XY_SIGMA = 1e-8
+    PRIOR_THETA_SIGMA = 1e-9
     PRIOR_POSE_NOISE = gtsam.noiseModel.Diagonal.Sigmas(
-        np.array([prior_x_pose_sigma, prior_y_pose_sigma, prior_heading_sigma * np.pi / 180]))
+        np.array([PRIOR_XY_SIGMA, PRIOR_XY_SIGMA, PRIOR_THETA_SIGMA * np.pi / 180]))
     ICP_NOISE = gtsam.noiseModel.Diagonal.Sigmas(np.array([1e-5, 1e-5, 1e-6]))
 
     # Add the prior factor to the factor graph with its associated initial estimate.
@@ -159,7 +158,5 @@ def dead_reckoning(bag_name: str,
     bag.close()
 
 if __name__ == "__main__":
-    plot_ICP_correspondences('data/bags/A1_bag_square_traj_2020-09-04-18-03-08.bag',
-                                '/slamware_ros_sdk_server_node/scan', 51)
-    # optimize_trajectory('data/bags/A1_bag_square_traj_2020-09-04-18-03-08.bag',
-    #                     '/slamware_ros_sdk_server_node/scan')
+    optimize_trajectory('data/bags_smooth/2022-03-05-06-50-22.bag',
+                        '/slamware_ros_sdk_server_node/scan')
