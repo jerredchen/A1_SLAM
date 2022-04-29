@@ -1,0 +1,13 @@
+{
+  # Declare the pose's standard deviation in the xyz-direction, in meters.
+  prior_xyz_pose_sigma: 1e-5,
+
+  # Declare the pose's roll-pitch-yaw rotational standard deviation, in degrees.
+  prior_rpy_sigma: 1e-4,
+
+  # Declare the velocity's standard deviation in all directions, in m/s.
+  prior_vel_sigma: 1e-5,
+
+  # Declare the bias' standard deviation in all directions, in m/s^2 or degrees/s.
+  prior_bias_sigma: 1e-6
+}
