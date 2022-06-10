@@ -1,0 +1,26 @@
+{
+  "normalize-cloud": false,
+
+  "icp": {
+    "batch-size": 5,
+    "max-matching-distance": 0.5,
+    "max-iterations": 1000,
+    "convergence-steps": 15,
+    "translational-convergence": 5e-05,
+    "rotational-convergence": 5e-06,
+    "filter": false},
+
+  "preconditioned_sgld2": {
+    "adjust_noise": 1.0,
+    "decay-rate": 0.9},
+
+  "point-to-plane": true,
+  "k-search": 30,
+
+  "step_size": {
+    "fixed": 5e-3,
+    "decreasing": false,
+    "a": 0.05,
+    "b": 10,
+    "gamma": -0.55}
+}

@@ -5,10 +5,9 @@ import numpy as np
 import rosbag
 
 import A1_LiDAR_ISAM2
-import A1_Plot
 import gtsam
 from gtsam.symbol_shorthand import B, V, X
-import vanilla_ICP as vanilla_ICP
+from registration import vanilla_ICP
 
 
 def optimize_trajectory(bag_name: str,
@@ -19,7 +18,7 @@ def optimize_trajectory(bag_name: str,
                             np.array([1e-5, 1e-5, 1e-5, 1e-6, 1e-6, 1e-6])),
                         prior_vel_noise = gtsam.noiseModel.Isotropic.Sigma(3, 1e-5),
                         prior_bias_noise = gtsam.noiseModel.Isotropic.Sigma(6, 1e-3),
-                        icp_noise = gtsam.noiseModel.I):
+                        icp_noise = gtsam.noiseModel.Isotropic.Sigma(6, 1e-3)):
     """Incrementally optimize the A1's trajectory using both IMU and LiDAR.
 
     Args:
@@ -46,7 +45,7 @@ def optimize_trajectory(bag_name: str,
     isam = gtsam.ISAM2(isam_parameters)
 
     # Instantiate the PIM parameters to create the PIM object.
-    pim_parameters = gtsam.PreintegrationParams.MakeSharedD(0.0)
+    pim_parameters = gtsam.PreintegrationParams.MakeSharedD()
     pim_parameters.setAccelerometerCovariance(np.eye(3) * 1e-3)
     pim_parameters.setGyroscopeCovariance(np.eye(3) * 1e-3)
     pim_parameters.setIntegrationCovariance(np.eye(3) * 1e-3)
@@ -126,7 +125,7 @@ def optimize_trajectory(bag_name: str,
                 # Perform the incremental iSAM2 update.
                 isam.update(graph, initial_estimate)
                 result = isam.calculateEstimate()
-                A1_Plot.plot_full_incremental_traj_and_map(result, scan, start=key_count, time_interval=0.01)
+                # A1_Plot.plot_full_incremental_traj_and_map(result, scan, start=key_count, time_interval=0.01)
 
                 # Reinitialize for the next iteration.
                 state_prev = gtsam.NavState(result.atPose3(X(key_count)), result.atVector(V(key_count)))

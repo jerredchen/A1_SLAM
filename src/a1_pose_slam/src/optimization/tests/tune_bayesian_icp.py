@@ -1,12 +1,10 @@
+import gtsam
 import matplotlib.pyplot as plt
 import numpy as np
 import rosbag
-
-import gtsam
-
-import A1_LiDAR_ISAM2
-import SLAM.vanilla_ICP as vanilla_ICP
-import sgdicp
+import sgdicp2D
+from optimization import A1_LiDAR_ISAM2
+from registration import vanilla_ICP
 
 def tune_bayesian_icp(bag_name: str,
                       topic_name: str,
@@ -39,24 +37,30 @@ def tune_bayesian_icp(bag_name: str,
             x = scan_transform.x()
             y = scan_transform.y()
             theta = scan_transform.theta()
-            samples = sgdicp.infer_bayesian_icp_posterior(scan, scan_prev, [x, y, theta], [0,0,0], 0.125)
+            samples = sgdicp2D.bayesian_icp(scan, scan_prev, [x, y, theta], [0, 0, 0], [10, 10, 10])
 
-            burnin = 100
+            burnin = 400
             posterior = samples[burnin:, :]
             mean_posterior = np.mean(posterior, axis=0)
             actual = gtsam.Pose2(mean_posterior[0], mean_posterior[1], mean_posterior[2])
             transformed_scan = actual.matrix() @ scan_prev
+
+            vanilla_icp_result = vanilla_ICP.icp(scan, scan_prev, scan_transform)
+            transformed_scan_vanilla = vanilla_icp_result.matrix() @ scan_prev
+            print(vanilla_icp_result)
             print(actual)
 
             plt.scatter(scan_prev[0], scan_prev[1])
             plt.scatter(scan[0], scan[1])
-            # plt.scatter(transformed_scan[0], transformed_scan[1])
-            plt.legend(["Source scan", "Target scan", "Transformed result"])
+            plt.scatter(transformed_scan[0], transformed_scan[1])
+            plt.scatter(transformed_scan_vanilla[0], transformed_scan_vanilla[1])
+            plt.legend(["Source scan", "Target scan", "Bayesian transformed result", "Vanilla transformed result"])
             plt.show()
 
             fig = plt.figure()
             ax = fig.add_subplot(projection='3d')
-            ax.scatter(samples[:,0], samples[:,1], samples[:,2], c=np.linspace(0,1,samples.shape[0]), cmap='gist_heat')
+            # ax.scatter(samples[:,0], samples[:,1], samples[:,2], c=np.linspace(0,1,samples.shape[0]), cmap='gist_heat')
+            ax.scatter(posterior[:,0], posterior[:,1], posterior[:,2], c=np.linspace(0,1,posterior.shape[0]), cmap='gist_heat')
             ax.plot(samples[:,0], samples[:,1], samples[:,2], linestyle='dashed')
             ax.set_xlabel('X')
             ax.set_ylabel('Y')
@@ -72,6 +76,6 @@ def tune_bayesian_icp(bag_name: str,
     bag.close()
 
 if __name__ == "__main__":
-    tune_bayesian_icp('data/bags/A1_bag_square_traj_2020-09-04-18-03-08.bag',
+    tune_bayesian_icp('../../data/bags/A1_bag_square_traj_2020-09-04-18-03-08.bag',
                       '/slamware_ros_sdk_server_node/scan',
-                      400)
+                      100)

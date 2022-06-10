@@ -1,0 +1,27 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>a1_pose_slam</name>
+  <version>0.1.0</version>
+  <description>Factor graph based PoseSLAM on the A1 quadruped.</description>
+
+  <maintainer email="jerredc99@gmail.com">Jerred Chen</maintainer>
+  <license>MIT</license>
+  <!-- <url type="website">http://wiki.ros.org/a1_pose_slam</url> -->
+  <author email="jerredc99@gmail.com">Jerred Chen</author>
+  <author email="xiaolindemaozi@outlook.com">Qingran Lin</author>
+  <author email="nitinvegesna@gmail.com">Nitin Vegesna</author>
+  <author email="yusufali.dtu.98@gmail.com">Yusuf Ali</author>
+  <author email="dellaert@cc.gatech.edu">Frank Dellaert</author>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <depend>roscpp</depend>
+  <depend>rospy</depend>
+  <depend>std_msgs</depend>
+  <depend>geometry_msgs</depend>
+  <depend>sensor_msgs</depend>
+
+  <build_depend>message_generation</build_depend>
+  <exec_depend>message_runtime</exec_depend>
+
+</package>

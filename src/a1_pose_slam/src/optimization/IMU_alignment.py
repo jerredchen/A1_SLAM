@@ -104,11 +104,10 @@ def optimize_trajectory(bag_name: str,
     # Instantiate the iSAM2 parameters to create the iSAM2 object.
     parameters = gtsam.ISAM2Params()
     parameters.setRelinearizeThreshold(0.1)
-    parameters.setRelinearizeSkip(1)
     isam = gtsam.ISAM2(parameters)
 
     # Instantiate the PIM parameters to create the PIM object.
-    pim_params = gtsam.PreintegrationParams.MakeSharedD(-9.81)
+    pim_params = gtsam.PreintegrationParams.MakeSharedU()
     pim_params.setAccelerometerCovariance(np.eye(3) * 1e-4)
     pim_params.setGyroscopeCovariance(np.eye(3) * 1e-4)
     pim_params.setIntegrationCovariance(np.eye(3) * 1e-4)
@@ -127,6 +126,9 @@ def optimize_trajectory(bag_name: str,
     all_biases = []
 
     for k, bag_info in enumerate(bag.read_messages(topic_name)):
+
+        if k >= 3100:
+            break
 
         # Extract the IMU measurements from the bag at a particular time instance.
         msg = bag_info[1]
@@ -147,7 +149,7 @@ def optimize_trajectory(bag_name: str,
         pim.integrateMeasurement(measured_accel, measured_omega, t - t_prev)
         t_prev = t
 
-        if k % 10 == 0:
+        if k % 25 == 0:
 
             # Add IMU factor to the factor graph.
             imu_factor = gtsam.ImuFactor(X(key_count - 1), V(key_count - 1), X(key_count), V(key_count), B(0), pim)
@@ -172,7 +174,7 @@ def optimize_trajectory(bag_name: str,
             all_biases.append((key_count, result.atConstantBias(B(0))))
             if len(plotted_biases) > 10:
                 plotted_biases.popleft()
-            report_progress(result, key_count, plotted_biases)
+            # report_progress(result, key_count, plotted_biases)
 
             # Reset the factor graph and initial estimates container.
             key_count += 1
@@ -194,7 +196,7 @@ if __name__ == "__main__":
     prior_vel_sigma = 1e-7
 
     # Declare the bias' standard deviation in all directions, in m/s^2 or degrees/s.
-    prior_bias_sigma = 0.25
+    prior_bias_sigma = 10.0
 
     # Instantiate noise models based on prior standard deviations for the pose,
     # velocity, and initial biases respectively.
@@ -213,8 +215,8 @@ if __name__ == "__main__":
     # Assume the initial biases of the IMU to be 0.
     initial_bias = gtsam.imuBias.ConstantBias()
 
-    optimize_trajectory('data/bags/imu_alignment-2020-09-04.bag',
-                        'IMU_data',
+    optimize_trajectory('../../bags/A1_walk_dataset_04_15_22/A1_bag_slow2_2022-03-05-07-02-26.bag',
+                        '/IMU_data',
                         initial_bias=initial_bias,
                         prior_pose_noise=PRIOR_POSE_NOISE,
                         prior_vel_noise=PRIOR_VEL_NOISE,

@@ -1,0 +1,8 @@
+prefix=/home/jerredchen/borglab/A1_SLAM/SLAM/devel
+
+Name: a1_pose_slam
+Description: Description of a1_pose_slam
+Version: 0.0.0
+Cflags: 
+Libs: -L${prefix}/lib 
+Requires: 

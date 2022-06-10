@@ -22,13 +22,14 @@ def plot_incremental_IMU_progress(values: gtsam.Values,
     keys = gtsam.KeyVector(poses.keys())
 
     # Plot the IMU trajectory.
+    pose_prev = gtsam.Pose3()
     for key in keys[start:]:
         if values.exists(key):
+            pose_prev = values.atPose3(keys[start - 1])
             pose_i = values.atPose3(key)
-            pose_prev = values.atPose3(key-1) if key > 0 else values.atPose3(0)
             axes.plot([pose_prev.x(), pose_i.x()],
-                      [pose_prev.y(), pose_i.y()],
-                      color='mediumseagreen')
+                    [pose_prev.y(), pose_i.y()],
+                    color='mediumseagreen')
 
     # Rescale the plot to include all points.
     axes.autoscale()
@@ -101,12 +102,16 @@ def plot_LIDAR_incremental_traj_and_map(values: gtsam.Values,
     for key in keys[start:]:
         if values.exists(key):
             pose_i = values.atPose2(key)
-            pose_prev = values.atPose2(key-1) if key > 0 else values.atPose2(0)
-            axes.plot([pose_prev.x(), pose_i.x()],
-                      [pose_prev.y(), pose_i.y()],
-                      color='mediumseagreen')
+            plot.plot_pose2(0, pose_i)
+            # pose_prev = values.atPose2(key-1) if key > 0 else values.atPose2(0)
+            # axes.plot([pose_prev.x(), pose_i.x()],
+            #           [pose_prev.y(), pose_i.y()],
+            #           color='mediumseagreen')
 
     # Rescale the plot to include all points.
+    # axes.set_aspect('equal', 'box')
+    # plt.xlim(-5, 5)
+    # plt.ylim(-5, 5)
     axes.autoscale()
 
     # Pause in between each plot iteration.
