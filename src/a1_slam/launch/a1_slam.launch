@@ -1,0 +1,4 @@
+<launch>
+    <rosparam file="$(find a1_slam)/config/config.yaml" />
+    <node pkg="a1_slam" type="A1_PoseSLAM_ISAM2.py" name="pose_slam" />
+</launch>

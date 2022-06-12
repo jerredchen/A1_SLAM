@@ -1,4 +1,4 @@
-#!/home/jerredchen/.pyenv/shims/python3
+#!/home/jerredchen/.pyenv/versions/3.9.0/bin/python3
 # -*- coding: utf-8 -*-
 
 # Software License Agreement (BSD License)
@@ -268,7 +268,7 @@ if __name__ == '__main__':
 
         if not args.local:
             # environment at generation time
-            CMAKE_PREFIX_PATH = r'/home/jerredchen/A1_SLAM_ws/devel;/opt/ros/noetic;/home/jerredchen/borglab/install'.split(';')
+            CMAKE_PREFIX_PATH = r'/opt/ros/noetic;/home/jerredchen/borglab/install'.split(';')
         else:
             # don't consider any other prefix path than this one
             CMAKE_PREFIX_PATH = []

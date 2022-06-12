@@ -1,4 +1,0 @@
-<launch>
-    <rosparam file="$(find a1_slam)/config/config_params.yaml" />
-    <node pkg="a1_slam" type="pose_slam_node" name="pose_slam" />
-</launch>
