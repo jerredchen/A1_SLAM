@@ -11,9 +11,10 @@ import gtsam
 from gtsam.symbol_shorthand import B, V, X
 from geometry_msgs.msg import Pose, Pose2D
 from sensor_msgs.msg import LaserScan, PointCloud2
-from a1_pose_slam.msg import HighState
-from src.a1_pose_slam.src.registration import icp_line, vanilla_ICP
-from src.a1_pose_slam.src.utils import A1_Plot
+from a1_slam.msg import HighState
+from registration import icp_line, vanilla_ICP
+from utils import A1_Plot
+
 
 def main():
     """
@@ -25,7 +26,6 @@ def main():
             optimize_graph will call sensor specific functions which will do its own processing
     """
     rospy.init_node('pose_slam_node', anonymous=True)
-    publisher = rospy.Publisher('pose', Pose)
     use_imu = rospy.get_param("/use_imu")
     use_2dlidar = rospy.get_param("/use_2dlidar")
     use_depth = rospy.get_param("/use_depth")

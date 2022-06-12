@@ -11,8 +11,8 @@ import numpy as np
 import rosbag
 import sgdicp2D
 from sklearn.neighbors import NearestNeighbors
-from src.a1_pose_slam.src.registration import icp_line, vanilla_ICP
-from src.a1_pose_slam.src.utils import A1_Plot
+from src.a1_slam.src.registration import icp_line, vanilla_ICP
+from src.a1_slam.src.utils import A1_Plot
 
 def plot_ICP_correspondences(bag_name, topic_name, i):
     """Plot the correspondences between two consecutive measurements."""
