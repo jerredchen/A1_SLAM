@@ -4,7 +4,7 @@ import numpy as np
 
 import gtsam
 # import icp_line
-from src.a1_pose_slam.src.registration import vanilla_ICP
+from registration import vanilla_ICP
 import sgdicp2D
 from collections import deque
 from gtsam.utils.test_case import GtsamTestCase
