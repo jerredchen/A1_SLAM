@@ -11,8 +11,9 @@ import numpy as np
 import rosbag
 import sgdicp2D
 from sklearn.neighbors import NearestNeighbors
-from src.a1_slam.src.registration import icp_line, vanilla_ICP
-from src.a1_slam.src.utils import A1_Plot
+import vanilla_ICP
+# from a1_slam.src.registration import icp_line, vanilla_ICP
+import A1_Plot
 
 def plot_ICP_correspondences(bag_name, topic_name, i):
     """Plot the correspondences between two consecutive measurements."""
@@ -130,45 +131,39 @@ def optimize_trajectory(bag_name: str,
             # >>>>>>> Remove for Bayesian ICP
             # target_scan = stored_scans[-(i + 1)]
             if i == 0:
-                init_estimate = [prev_transform.x(), prev_transform.y(), prev_transform.theta()]
+                init_estimate = prev_transform
+                # init_estimate = [prev_transform.x(), prev_transform.y(), prev_transform.theta()]
                 # targetTsource = icp_line.icp(source_scan, target_scan, prev_transform)
             else:
                 wTb = result.atPose2(k - n)
                 wTa = result.atPose2(k - n - (i + 1))
                 aTb_mat = wTa.inverse().matrix() @ wTb.matrix()
-                init_estimate = [aTb_mat[0,2], aTb_mat[1,2], np.arctan2(aTb_mat[1,0], aTb_mat[0,0])]
-                # init_estimate = gtsam.Pose2(np.arctan2(aTb_mat[1,0], aTb_mat[0,0]), aTb_mat[:2,2])
+                # init_estimate = [aTb_mat[0,2], aTb_mat[1,2], np.arctan2(aTb_mat[1,0], aTb_mat[0,0])]
+                init_estimate = gtsam.Pose2(np.arctan2(aTb_mat[1,0], aTb_mat[0,0]), aTb_mat[:2,2])
                 # targetTsource = icp_line.icp(source_scan, target_scan, init_estimate)
             target_scan = stored_scans[-(i + 1)]
-            for _ in range(3):
-                samples = sgdicp2D.bayesian_icp(source_scan, target_scan, init_estimate, [0.0, 0.0, 0.0], [100, 100, 100])
-                if not (samples[0] == -1.0).all():
-                    break
-            if (samples[0] == -1.0).all() and i == 0:
-                targetTsource = icp_line.icp(source_scan, target_scan, initial_transform=prev_transform)
-                cov = np.eye(3) * 0.1
-            elif (samples[0] == -1.0).all() and i > 0:
-                continue
-            else:
-                mean_params = np.mean(samples[200:,:], axis=0)
-                cov = np.cov(samples.T)
+            # for _ in range(3):
+            #     samples = sgdicp2D.bayesian_icp(source_scan, target_scan, init_estimate, [0.0, 0.0, 0.0], [100, 100, 100])
+            #     if not (samples[0] == -1.0).all():
+            #         break
+            # if (samples[0] == -1.0).all() and i == 0:
+            #     targetTsource = icp_line.icp(source_scan, target_scan, initial_transform=prev_transform)
+            #     cov = np.eye(3) * 0.1
+            # elif (samples[0] == -1.0).all() and i > 0:
+            #     continue
+            # else:
+            #     mean_params = np.mean(samples[200:,:], axis=0)
+            #     cov = np.cov(samples.T)
 
-                std_devs = np.sqrt(np.diag(cov))
+            #     std_devs = np.sqrt(np.diag(cov))
 
-                targetTsource = gtsam.Pose2(mean_params[0], mean_params[1], mean_params[2])
-                print(f"computed transform: {targetTsource}")
-
-                # plt.figure()
-                # transformed_scan = targetTsource.matrix() @ source_scan
-                # plt.scatter(source_scan[0], source_scan[1])
-                # plt.scatter(target_scan[0], target_scan[1])
-                # plt.scatter(transformed_scan[0], transformed_scan[1])
-                # plt.legend(["Source scan", "Target scan", "Bayesian transformed result"])
-                # plt.savefig(f'results/scans_{k}_{k - (i + 1)}.png')
-                # plt.close()
+            #     targetTsource = gtsam.Pose2(mean_params[0], mean_params[1], mean_params[2])
+            #     print(f"computed transform: {targetTsource}")
+            targetTsource = vanilla_ICP.icp(source_scan, target_scan, init_estimate)
 
             # Add an odometry factor between two poses.
-            icp_noise = gtsam.noiseModel.Gaussian.Covariance(cov)
+            # icp_noise = gtsam.noiseModel.Gaussian.Covariance(cov)
+            icp_noise = gtsam.noiseModel.Isotropic.Sigma(3, 1e-2)
             graph.add(gtsam.BetweenFactorPose2(k - n - (i + 1), k - n, targetTsource, icp_noise))
             if i == 0:                    
                 initialized_odom = result.atPose2(k - n - 1).compose(targetTsource)
@@ -233,7 +228,7 @@ def dead_reckoning(bag_name: str,
     bag.close()
 
 if __name__ == "__main__":
-    optimize_trajectory('../../bags/A1_walk_dataset_04_15_22/A1_bag_fast1_2022-03-05-07-01-08.bag',
-                        '/slamware_ros_sdk_server_node/scan', 6, 40)
+    optimize_trajectory('/home/jerredchen/borglab/A1_SLAM/bags/A1_walk_dataset_04_15_22/A1_bag_fast1_2022-03-05-07-01-08.bag',
+                        '/slamware_ros_sdk_server_node/scan',6,0)
     # dead_reckoning('../../bags/A1_walk_dataset_04_15_22/A1_bag_slow1_2022-03-05-06-54-59.bag',
     #                     '/slamware_ros_sdk_server_node/scan')

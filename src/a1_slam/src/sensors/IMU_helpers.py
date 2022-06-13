@@ -126,7 +126,6 @@ def _create_factor_graph_and_params(
     pim_parameters.setAccelerometerCovariance(accel_noise)
     pim_parameters.setGyroscopeCovariance(gyro_noise)
     pim_parameters.setIntegrationCovariance(integration_noise)
-    # pim_parameters.setBodyPSensor(gtsam.Pose3(gtsam.Rot3().Rz(np.pi/2), np.zeros(3)))
     pim = gtsam.PreintegratedImuMeasurements(
         pim_parameters, prior_bias_factor.prior())
 
@@ -269,3 +268,5 @@ def create_imu_graph_and_params(graph):
     # Create the initial factor graph and associated parameters for setup.
     graph, initial_estimate, isam, pim = _create_factor_graph_and_params(
         *parsed_config_params)
+    
+    return graph, initial_estimate, pim

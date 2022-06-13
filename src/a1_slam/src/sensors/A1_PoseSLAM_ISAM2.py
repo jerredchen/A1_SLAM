@@ -13,8 +13,6 @@ from geometry_msgs.msg import Pose, Pose2D
 from sensor_msgs.msg import LaserScan, PointCloud2
 from a1_slam.msg import HighState
 from registration import icp_line, vanilla_ICP
-from utils import A1_Plot
-
 
 def main():
     """
@@ -36,7 +34,8 @@ def main():
         pass
     if use_depth:
         pass
-
+    if not any([use_imu, use_2dlidar, use_depth]):
+        raise RuntimeError("No sensors selected. Please select at least one of the sensors in the YAML file.")
 
 if __name__ == "__main__":
     try:
