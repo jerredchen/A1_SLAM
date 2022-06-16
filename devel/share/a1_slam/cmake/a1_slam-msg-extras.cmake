@@ -1,2 +1,2 @@
 set(a1_slam_MESSAGE_FILES "/home/jerredchen/borglab/A1_SLAM/SLAM/src/a1_slam/msg/MotorCmd.msg;/home/jerredchen/borglab/A1_SLAM/SLAM/src/a1_slam/msg/MotorState.msg;/home/jerredchen/borglab/A1_SLAM/SLAM/src/a1_slam/msg/Cartesian.msg;/home/jerredchen/borglab/A1_SLAM/SLAM/src/a1_slam/msg/IMU.msg;/home/jerredchen/borglab/A1_SLAM/SLAM/src/a1_slam/msg/LED.msg;/home/jerredchen/borglab/A1_SLAM/SLAM/src/a1_slam/msg/LowCmd.msg;/home/jerredchen/borglab/A1_SLAM/SLAM/src/a1_slam/msg/LowState.msg;/home/jerredchen/borglab/A1_SLAM/SLAM/src/a1_slam/msg/HighCmd.msg;/home/jerredchen/borglab/A1_SLAM/SLAM/src/a1_slam/msg/HighState.msg")
-set(a1_slam_SERVICE_FILES "")
+set(a1_slam_SERVICE_FILES "/home/jerredchen/borglab/A1_SLAM/SLAM/src/a1_slam/srv/GtsamResults.srv")

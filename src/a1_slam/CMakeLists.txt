@@ -5,8 +5,6 @@ project(a1_slam)
 # add_compile_options(-std=c++11)
 
 ## Find catkin macros and libraries
-## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
-## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
   roscpp
   rospy
@@ -31,6 +29,12 @@ add_message_files(
   LowState.msg
   HighCmd.msg
   HighState.msg
+)
+
+# Generate services in the 'srv' folder
+add_service_files(
+  FILES
+  GtsamResults.srv
 )
 
 # Generate added messages and services with any dependencies listed here
@@ -74,7 +78,7 @@ include_directories(
 ## Mark executable scripts (Python etc.) for installation
 ## in contrast to setup.py, you can choose the destination
 catkin_install_python(PROGRAMS
-  src/optimization/A1_PoseSLAM_ISAM2.py
+  src/nodes/PoseSLAM_node.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
