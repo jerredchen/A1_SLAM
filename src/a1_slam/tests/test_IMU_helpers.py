@@ -132,7 +132,8 @@ class TestIMU(GtsamTestCase):
             pim = IMU_helpers.preintegrate_measurement(
                 highstate, 0.02, pim, [0, 0, -9.81])
 
-        np.testing.assert_array_equal(pim.deltaPij(), [0.5, 0, 0])
+        np.testing.assert_array_almost_equal(
+            pim.deltaPij(), [0.5, 0, 0], decimal=1e-10)
 
     def test_add_IMU_factor(self):
         """Test adding an IMU factor to the graph."""
@@ -153,20 +154,27 @@ class TestIMU(GtsamTestCase):
             pim = IMU_helpers.preintegrate_measurement(
                 highstate, 0.02, pim, [0, 0, -9.81])
 
-        navstate = gtsam.NavState()
-        graph, initial_estimates = IMU_helpers.add_IMU_factor(
-            X(0),
-            X(1),
-            pim,
-            navstate,
-            graph,
-            initial_estimates
-        )
-
         # Instantiate the iSAM2 parameters to create the iSAM2 object.
         isam = gtsam.ISAM2(gtsam.ISAM2Params())
 
-        # Perform the incremental update using iSAM2.
+        # Perform the preliminary update and clear the graph and initial estimates.
+        isam.update(graph, initial_estimates)
+        results = isam.calculateEstimate()
+        graph = gtsam.NonlinearFactorGraph()
+        initial_estimates.clear()
+
+        navstate = gtsam.NavState()
+        graph, initial_estimates, pim = IMU_helpers.add_IMU_factor(
+            0,
+            1,
+            pim,
+            navstate,
+            graph,
+            initial_estimates,
+            results
+        )
+
+        # Perform the actual incremental update using iSAM2.
         isam.update(graph, initial_estimates)
         actual = isam.calculateEstimate()
 

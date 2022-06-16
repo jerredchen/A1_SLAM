@@ -9,15 +9,18 @@ from sensors import LIDAR_2D_helpers
 from sensor_msgs.msg import LaserScan
 
 
-class TestIMU(GtsamTestCase):
+class TestLIDAR(GtsamTestCase):
 
     def setUp(self):
         # Create default prior factors and covariances.
         self.setup_pose_prior = gtsam.PriorFactorPose2(
             X(0),
             gtsam.Pose2(),
-            gtsam.noiseModel.Isotropic.Sigma(3, 1e-10)
+            gtsam.noiseModel.Diagonal.Sigmas([1e-10, 1e-10, 1e-10])
         )
+        self.icp_noise = gtsam.noiseModel.Diagonal.Sigmas([
+            1e-3, 1e-3, 1e-3
+        ])
     
     def test_parse_config_parameters(self):
         """Test the parsing of the config parameters."""
@@ -32,8 +35,12 @@ class TestIMU(GtsamTestCase):
             X(0),
             gtsam.Pose2(1, 2, 0),
             gtsam.noiseModel.Diagonal.Sigmas(
-                [1e-2, 1e-2, 1e-3]
+                [1e-2, 1e-2, np.deg2rad(1e-3)]
             )
+        )
+
+        expected_icp_noise = gtsam.noiseModel.Diagonal.Sigmas(
+            [1e-2, 1e-2, np.deg2rad(1e-3)]
         )
 
         # Generate the actual prior factors and covariances.
@@ -43,6 +50,7 @@ class TestIMU(GtsamTestCase):
                     icp_noise_sigmas)
         
         self.gtsamAssertEquals(actual[0], expected_pose_prior)
+        self.gtsamAssertEquals(actual[1], expected_icp_noise)
 
     def test_create_factor_graph_and_params(self):
         """Test the creation of the factor graph and additional setup."""
@@ -57,6 +65,8 @@ class TestIMU(GtsamTestCase):
 
         # Generate the actual factor graph and initial estimates.
         actual = LIDAR_2D_helpers._create_factor_graph_and_params(
+            gtsam.NonlinearFactorGraph(),
+            gtsam.Values(),
             self.setup_pose_prior
         )
 
@@ -64,18 +74,20 @@ class TestIMU(GtsamTestCase):
         self.gtsamAssertEquals(actual[1], expected_inits)
     
     def test_preprocess_measurement(self):
-        """Test preintegrating several measurements."""
+        """Test preprocessing the scan ranges."""
         scan = LaserScan()
+        scan.angle_increment = -np.pi/4
+        scan.angle_min, scan.angle_max = np.pi, -np.pi
         angles = [0, 45, 90, 135, 180, 225, 270, 315]
         for i in range(len(angles)):
-            scan.ranges[i] = 1.0 if angles[i] % 10 == 0 else np.sqrt(2)
+            scan.ranges.append(1.0 if i % 2 == 0 else np.sqrt(2))
         expected = np.array([
             [-1.0, -1.0, 0.0, 1.0, 1.0, 1.0, 0.0, -1.0],
-            [0.0, -1.0, -1.0, -1.0, 0.0, 1.0, 1.0, 1.0],
+            [0.0, 1.0, 1.0, 1.0, 0.0, -1.0, -1.0, -1.0],
             [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
         ])
         actual = LIDAR_2D_helpers.preprocess_measurement(scan)
-        np.testing.assert_array_equal(expected, actual)
+        np.testing.assert_array_almost_equal(expected, actual, decimal=1e-5)
 
     def test_add_lidar_factor(self):
         """Test adding an IMU factor to the graph."""
@@ -85,28 +97,38 @@ class TestIMU(GtsamTestCase):
         graph.add(self.setup_pose_prior)
         initial_estimates = gtsam.Values()
         initial_estimates.insert(X(0), gtsam.Pose2())
+
         scan_a = np.array([[0.0, 0.5, 0.5], [0.0, 0.0, 1.0], [1.0, 1.0, 1.0]])
         scan_b = np.array([[0.1, 0.6, 0.6], [0.0, 0.0, 1.0], [1.0, 1.0, 1.0]])
-
-        graph, initial_estimates = LIDAR_2D_helpers.add_lidar_factor(
-            X(0),
-            X(1),
-            scan_a,
-            scan_b,
-            graph,
-            initial_estimates
-        )
 
         # Instantiate the iSAM2 parameters to create the iSAM2 object.
         isam = gtsam.ISAM2(gtsam.ISAM2Params())
 
-        # Perform the incremental update using iSAM2.
+        # Perform the first incremental update using iSAM2 and clear the graph and initial estimate.
+        isam.update(graph, initial_estimates)
+        results = isam.calculateEstimate()
+        graph = gtsam.NonlinearFactorGraph()
+        initial_estimates.clear()
+
+        graph, initial_estimates = LIDAR_2D_helpers.add_lidar_factor(
+            0,
+            1,
+            scan_a,
+            scan_b,
+            self.icp_noise,
+            graph,
+            initial_estimates,
+            results,
+            registration="vanilla"
+        )
+
+        # Perform the actual incremental update using iSAM2.
         isam.update(graph, initial_estimates)
         actual = isam.calculateEstimate()
 
         expected = gtsam.Values()
         expected.insert(X(0), gtsam.Pose2())
-        expected.insert(X(1), gtsam.Pose2(0.1, 0, 0))
+        expected.insert(X(1), gtsam.Pose2(-0.1, 0, 0))
         self.gtsamAssertEquals(actual, expected, tol=5e-3)
 
 if __name__ == '__main__':
