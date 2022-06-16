@@ -19,7 +19,7 @@
   ##################################         IMU         ##################################
   #########################################################################################
 
-  # The topic name for the IMU.
+  # The topic name for HighState.
   imu_topic: /IMU_data,
 
   # The number of measurements that the IMU should preintegrate before adding an IMU factor.
@@ -49,6 +49,11 @@
   # The topic name for the 2D LiDAR.
   2dlidar_topic: /slamware_ros_sdk_server_node/scan,
 
+  # The noise standard deviation of registering two laser scans formatted as [x, y, theta], in m or degrees.
+  icp_noise: [5.0e-2, 5.0e-2, 5.0e-3],
+
+  lidar_submap_length: 5,
+  
   #########################################################################################
   ##################################       Depth         ##################################
   #########################################################################################
