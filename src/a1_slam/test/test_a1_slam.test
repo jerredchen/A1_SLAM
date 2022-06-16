@@ -1,0 +1,4 @@
+<launch>
+    <rosparam file="$(find a1_slam)/tests/config/config.yaml" />
+    <node pkg="a1_slam" type="PoseSLAM_node.py" name="pose_slam" output="screen"/>
+</launch>

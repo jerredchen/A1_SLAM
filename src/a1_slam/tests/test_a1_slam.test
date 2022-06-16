@@ -1,4 +1,0 @@
-<launch>
-    <rosparam file="$(find a1_slam)/tests/config/imu_config.yaml" />
-    <node pkg="a1_slam" type="A1_PoseSLAM_ISAM2.py" name="pose_slam" output="screen"/>
-</launch>

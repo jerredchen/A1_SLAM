@@ -16,18 +16,24 @@ from sensor_msgs.msg import LaserScan, PointCloud2
 from sensors import IMU_helpers, LIDAR_2D_helpers
 
 
-N_GRAVITY = [0, 0, 9.81]
+N_GRAVITY = [0, 0, -9.81]
 
+# Instantiate publisher global variables
+pose_publisher = None
 
-publisher = None
+# Instantiate actor graph and optimizer global variables
 state_index = 0
-pim = None
-prev_timestamp = 0
-icp_noise = None
 graph = gtsam.NonlinearFactorGraph()
 initial_estimates = gtsam.Values()
 results = gtsam.Values()
 isam = None
+
+# Instantiate IMU global variables
+pim = None
+timestamp = 0
+
+# Instantiate 2D LIDAR global variables
+icp_noise = None
 submap_scans = deque([], rospy.get_param('/lidar_submap_length'))
 
 
@@ -40,15 +46,15 @@ def imu_callback(msg):
     """If imu_callback is called:
         - only performs preintegration
     """
-    global prev_timestamp
-    timestamp = msg.header.stamp.secs + msg.header.stamp.nsecs * 1e-9
+    global timestamp
+    curr_timestamp = msg.header.stamp.secs + msg.header.stamp.nsecs * 1e-9
     pim = IMU_helpers.preintegrate_measurement(
         msg,
-        timestamp - prev_timestamp,
+        curr_timestamp - timestamp,
         pim,
         N_GRAVITY
     )
-    prev_timestamp = timestamp
+    timestamp = curr_timestamp
 
 
 def lidar_callback(msg):
@@ -77,8 +83,9 @@ def lidar_callback(msg):
     submap_scans.append(scan)
     optimize_graph()
 
+
 def optimize_graph():
-    global publisher, state_index, graph, initial_estimates, isam, results
+    global pose_publisher, state_index, graph, initial_estimates, isam, results
 
     prev_results_size = results.size()
 
@@ -86,12 +93,25 @@ def optimize_graph():
     isam.update(graph, initial_estimates)
     results = isam.calculateEstimate()
     if results.size() > prev_results_size:
-        pose_estimate = results.atPose2(state_index)
-        pose_msg = Pose2D()
-        pose_msg.x = pose_estimate.x()
-        pose_msg.y = pose_estimate.y()
-        pose_msg.theta = pose_estimate.theta()
-        publisher.publish(pose_msg)
+        if rospy.get_param('use_2dlidar'):
+            pose_estimate = results.atPose2(X(state_index))
+            pose_msg = Pose2D()
+            pose_msg.x = pose_estimate.x()
+            pose_msg.y = pose_estimate.y()
+            pose_msg.theta = pose_estimate.theta()
+            pose_publisher.publish(pose_msg)
+        else:
+            pose_estimate = results.atPose3(X(state_index))
+            pose_msg = Pose()
+            pose_msg.position.x = pose_estimate.x()
+            pose_msg.position.y = pose_estimate.y()
+            pose_msg.position.y = pose_estimate.z()
+            quaternion = gtsam.rotation().quaternion()
+            pose_msg.orientation.x = quaternion[1]
+            pose_msg.orientation.y = quaternion[2]
+            pose_msg.orientation.z = quaternion[3]
+            pose_msg.orientation.w = quaternion[0]
+            pose_publisher.publish(pose_msg)
 
     # Clear the graph and initial estimates.
     graph = gtsam.NonlinearFactorGraph()
@@ -108,7 +128,7 @@ def perform_pose_slam():
     3. optimize_graph(graph, init_estimates, isam, pim=None, ...)
             optimize_graph will call sensor specific functions which will do its own processing
     """
-    global graph, initial_estimates, publisher, isam, icp_noise
+    global graph, initial_estimates, isam, icp_noise, pose_publisher
     rospy.init_node('pose_slam_node', anonymous=True)
 
     # Parse the rosparams to identify which sensors to use.
@@ -122,7 +142,7 @@ def perform_pose_slam():
     if use_imu:
         graph, initial_estimates = IMU_helpers.create_imu_graph_and_params(
             graph, initial_estimates)
-        publisher = rospy.Publisher("Pose", Pose)
+        pose_publisher = rospy.Publisher("Pose", Pose)
 
         # Instantiate the IMU subscriber
         imu_topic = rospy.get_param("/imu_topic")
@@ -131,7 +151,7 @@ def perform_pose_slam():
     if use_2dlidar:
         graph, initial_estimates, icp_noise = LIDAR_2D_helpers.create_lidar_graph_and_params(
             graph, initial_estimates)
-        publisher = rospy.Publisher("Pose", Pose2D)
+        pose_publisher = rospy.Publisher("Pose", Pose2D)
 
         # Instantiate the LIDAR subscriber
         lidar_topic = rospy.get_param("/lidar_topic")
