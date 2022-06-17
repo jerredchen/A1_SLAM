@@ -23,6 +23,10 @@
   <depend>roslaunch</depend>
 
   <build_depend>message_generation</build_depend>
+  <build_depend>rostest</build_depend>
+
   <exec_depend>message_runtime</exec_depend>
+
+  <test_depend>rosunit</test_depend>
 
 </package>

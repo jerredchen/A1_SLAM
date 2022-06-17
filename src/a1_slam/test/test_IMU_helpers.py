@@ -188,4 +188,5 @@ class TestIMU(GtsamTestCase):
 
 
 if __name__ == '__main__':
-    unittest.main()
+    import rosunit
+    rosunit.unitrun('a1_slam', 'test_imu_helpers', TestIMU)

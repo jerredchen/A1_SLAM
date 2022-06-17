@@ -132,4 +132,5 @@ class TestLIDAR(GtsamTestCase):
         self.gtsamAssertEquals(actual, expected, tol=5e-3)
 
 if __name__ == '__main__':
-    unittest.main()
+    import rosunit
+    rosunit.unitrun('a1_slam', 'test_lidar_helpers', TestLIDAR)

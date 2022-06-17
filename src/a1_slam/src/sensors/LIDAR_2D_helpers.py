@@ -86,9 +86,12 @@ def create_lidar_graph_and_params(graph, initial_estimates):
     # Obtain the pose's translational and rotational standard deviations, in meters and degrees.
     prior_pose_sigmas = rospy.get_param('prior_pose_sigmas')
 
+    # Obtain the standard deviation associated with registration noise, in meters and degrees.
+    icp_noise_sigmas = rospy.get_param('icp_noise')
+
     # Parse the config parameters to be GTSAM appropriate objects.
     prior_pose_factor, icp_noise_model = _parse_config_parameters(
-        prior_pose_estimate, prior_pose_sigmas)
+        prior_pose_estimate, prior_pose_sigmas, icp_noise_sigmas)
 
     # Create the initial factor graph and associated parameters for setup.
     graph, initial_estimates = _create_factor_graph_and_params(

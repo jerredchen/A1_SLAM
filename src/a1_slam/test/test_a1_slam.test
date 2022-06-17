@@ -1,4 +1,5 @@
 <launch>
-    <rosparam file="$(find a1_slam)/tests/config/config.yaml" />
-    <node pkg="a1_slam" type="PoseSLAM_node.py" name="pose_slam" output="screen"/>
+    <rosparam file="$(find a1_slam)/test/test_config/test_config.yaml" />
+    <node pkg="a1_slam" type="PoseSLAM_node.py" name="pose_slam"/>
+    <test test-name="test_pose_slam" pkg="a1_slam" type="test_PoseSLAM.py" />
 </launch>

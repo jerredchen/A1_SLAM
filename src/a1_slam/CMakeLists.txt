@@ -57,11 +57,6 @@ catkin_package(
   sensor_msgs 
 )
 
-if(CATKIN_ENABLE_TESTING)
-  find_package(rostest REQUIRED)
-  add_rostest(test/mytest.test)
-endif()
-
 ###########
 ## Build ##
 ###########
@@ -93,3 +88,14 @@ install(
   DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
   FILES_MATCHING PATTERN "*.h"
 )
+
+#############
+## Testing ##
+#############
+
+if(CATKIN_ENABLE_TESTING)
+  find_package(rostest REQUIRED)
+  add_rostest(test/test_a1_slam.test)
+  catkin_add_nosetests(test/test_IMU_helpers.py)
+  catkin_add_nosetests(test/test_LIDAR_2D_helpers.py)
+endif()
