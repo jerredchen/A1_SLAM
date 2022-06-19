@@ -13,7 +13,7 @@ def handle_pose(msg: PoseStamped):
     t.child_frame_id = "body"
     t.transform.translation.x = msg.pose.position.x
     t.transform.translation.y = msg.pose.position.y
-    t.transform.translation.z = 0.0
+    t.transform.translation.z = msg.pose.position.z
     q = msg.pose.orientation
     t.transform.rotation.x = q.x
     t.transform.rotation.y = q.y

@@ -5,9 +5,7 @@ d = generate_distutils_setup(
     packages=[
         'a1_slam',
         'nodes',
-        'sensors',
-        'registration',
-        'utils'
+        'registration'
     ],
     package_dir={'': 'src'}
 )
