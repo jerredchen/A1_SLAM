@@ -78,7 +78,8 @@ class OptimizerNode():
 
     def publish_pose(self, key):
         pose_msg = PoseStamped()
-        pose_msg.header.frame_id = "body"
+        pose_msg.header.stamp = rospy.Time.now()
+        pose_msg.header.frame_id = "world"
         if rospy.get_param('use_2dlidar'):
             pose_estimate = self.results.atPose2(key)
             pose_msg.pose.position.x = pose_estimate.x()
