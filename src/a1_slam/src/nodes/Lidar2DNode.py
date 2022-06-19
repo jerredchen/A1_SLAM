@@ -24,7 +24,7 @@ class Lidar2DNode:
 
         # Instantiate 2D LIDAR related attributes.
         self.icp_noise = gtsam.noiseModel.Diagonal.Sigmas(np.ones((3,)))
-        self.submap_scans = deque([], rospy.get_param('/lidar_submap_length'))
+        self.submap_scans = deque([], rospy.get_param('/lidar2d/submap_length'))
 
         # Instantiate service for optimizer
         rospy.wait_for_service('optimizer_service')
