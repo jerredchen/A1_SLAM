@@ -68,9 +68,7 @@ class PoseSlamNode():
                 - after isam called, publish pose, trajectory
             - maybe additionally add further registration constraints?
         """
-        rospy.loginfo(f"lidar callback, receiving {msg.header.seq=}")
         scan = LIDAR_2D_helpers.preprocess_measurement(msg)
-        rospy.loginfo(f"{scan=}")
         if len(self.submap_scans) == 0:
             self.submap_scans.append(scan)
             return
@@ -83,14 +81,12 @@ class PoseSlamNode():
             self.graph,
             self.initial_estimates,
             self.results,
-            "vanilla"
+            rospy.get_param('registration')
         )
         self.submap_scans.append(scan)
         self.optimize_graph()
 
     def optimize_graph(self):
-
-        rospy.loginfo("optimizing factor graph")
 
         prev_results_size = self.results.size()
 
