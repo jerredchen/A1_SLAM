@@ -1,5 +1,5 @@
 <launch>
     <rosparam file="$(find a1_slam)/config/config.yaml" />
-    <node pkg="a1_slam" type="A1_PoseSLAM_ISAM2.py" name="pose_slam" output="screen"/>
+    <node pkg="a1_slam" type="PoseSLAM_node.py" name="pose_slam"/>
     <node name="tf2_broadcaster" pkg="a1_slam" type="tf2_broadcaster.py" />
 </launch>
