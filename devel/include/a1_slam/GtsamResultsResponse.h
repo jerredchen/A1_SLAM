@@ -24,17 +24,17 @@ struct GtsamResultsResponse_
   typedef GtsamResultsResponse_<ContainerAllocator> Type;
 
   GtsamResultsResponse_()
-    : str()  {
+    : results()  {
     }
   GtsamResultsResponse_(const ContainerAllocator& _alloc)
-    : str(_alloc)  {
+    : results(_alloc)  {
   (void)_alloc;
     }
 
 
 
-   typedef std::basic_string<char, std::char_traits<char>, typename ContainerAllocator::template rebind<char>::other >  _str_type;
-  _str_type str;
+   typedef std::basic_string<char, std::char_traits<char>, typename ContainerAllocator::template rebind<char>::other >  _results_type;
+  _results_type results;
 
 
 
@@ -65,7 +65,7 @@ return s;
 template<typename ContainerAllocator1, typename ContainerAllocator2>
 bool operator==(const ::a1_slam::GtsamResultsResponse_<ContainerAllocator1> & lhs, const ::a1_slam::GtsamResultsResponse_<ContainerAllocator2> & rhs)
 {
-  return lhs.str == rhs.str;
+  return lhs.results == rhs.results;
 }
 
 template<typename ContainerAllocator1, typename ContainerAllocator2>
@@ -122,12 +122,12 @@ struct MD5Sum< ::a1_slam::GtsamResultsResponse_<ContainerAllocator> >
 {
   static const char* value()
   {
-    return "994972b6e03928b2476860ce6c4c8e17";
+    return "050d718085d2969bac3160f48f51460c";
   }
 
   static const char* value(const ::a1_slam::GtsamResultsResponse_<ContainerAllocator>&) { return value(); }
-  static const uint64_t static_value1 = 0x994972b6e03928b2ULL;
-  static const uint64_t static_value2 = 0x476860ce6c4c8e17ULL;
+  static const uint64_t static_value1 = 0x050d718085d2969bULL;
+  static const uint64_t static_value2 = 0xac3160f48f51460cULL;
 };
 
 template<class ContainerAllocator>
@@ -146,7 +146,7 @@ struct Definition< ::a1_slam::GtsamResultsResponse_<ContainerAllocator> >
 {
   static const char* value()
   {
-    return "string str\n"
+    return "string results\n"
 ;
   }
 
@@ -165,7 +165,7 @@ namespace serialization
   {
     template<typename Stream, typename T> inline static void allInOne(Stream& stream, T m)
     {
-      stream.next(m.str);
+      stream.next(m.results);
     }
 
     ROS_DECLARE_ALLINONE_SERIALIZER
@@ -184,8 +184,8 @@ struct Printer< ::a1_slam::GtsamResultsResponse_<ContainerAllocator> >
 {
   template<typename Stream> static void stream(Stream& s, const std::string& indent, const ::a1_slam::GtsamResultsResponse_<ContainerAllocator>& v)
   {
-    s << indent << "str: ";
-    Printer<std::basic_string<char, std::char_traits<char>, typename ContainerAllocator::template rebind<char>::other > >::stream(s, indent + "  ", v.str);
+    s << indent << "results: ";
+    Printer<std::basic_string<char, std::char_traits<char>, typename ContainerAllocator::template rebind<char>::other > >::stream(s, indent + "  ", v.results);
   }
 };
 

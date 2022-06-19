@@ -40,7 +40,7 @@ template<>
 struct MD5Sum< ::a1_slam::GtsamResults > {
   static const char* value()
   {
-    return "7189306d182a38b37d781470320bb653";
+    return "0e35ec748ec070bc1eff3fd9921a52fc";
   }
 
   static const char* value(const ::a1_slam::GtsamResults&) { return value(); }

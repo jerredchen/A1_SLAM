@@ -1,3 +1,6 @@
-int8 req
+string factor_type
+string factor
+int64 key
+string init_estimate
 ---
-string str
+string results

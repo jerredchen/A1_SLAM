@@ -3,10 +3,11 @@ import unittest
 import a1_slam
 import gtsam
 import numpy as np
-from a1_slam.msg import HighState
+from unitree_legged_msgs.msg import HighState
 from gtsam.symbol_shorthand import B, V, X
 from gtsam.utils.test_case import GtsamTestCase
-from sensors import IMU_helpers
+from a1_slam.src.sensors import IMU_helpers
+from nodes import IMU_node
 
 
 class TestIMU(GtsamTestCase):

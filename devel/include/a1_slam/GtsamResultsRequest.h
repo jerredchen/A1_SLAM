@@ -24,17 +24,32 @@ struct GtsamResultsRequest_
   typedef GtsamResultsRequest_<ContainerAllocator> Type;
 
   GtsamResultsRequest_()
-    : req(0)  {
+    : factor_type()
+    , factor()
+    , key(0)
+    , init_estimate()  {
     }
   GtsamResultsRequest_(const ContainerAllocator& _alloc)
-    : req(0)  {
+    : factor_type(_alloc)
+    , factor(_alloc)
+    , key(0)
+    , init_estimate(_alloc)  {
   (void)_alloc;
     }
 
 
 
-   typedef int8_t _req_type;
-  _req_type req;
+   typedef std::basic_string<char, std::char_traits<char>, typename ContainerAllocator::template rebind<char>::other >  _factor_type_type;
+  _factor_type_type factor_type;
+
+   typedef std::basic_string<char, std::char_traits<char>, typename ContainerAllocator::template rebind<char>::other >  _factor_type;
+  _factor_type factor;
+
+   typedef int64_t _key_type;
+  _key_type key;
+
+   typedef std::basic_string<char, std::char_traits<char>, typename ContainerAllocator::template rebind<char>::other >  _init_estimate_type;
+  _init_estimate_type init_estimate;
 
 
 
@@ -65,7 +80,10 @@ return s;
 template<typename ContainerAllocator1, typename ContainerAllocator2>
 bool operator==(const ::a1_slam::GtsamResultsRequest_<ContainerAllocator1> & lhs, const ::a1_slam::GtsamResultsRequest_<ContainerAllocator2> & rhs)
 {
-  return lhs.req == rhs.req;
+  return lhs.factor_type == rhs.factor_type &&
+    lhs.factor == rhs.factor &&
+    lhs.key == rhs.key &&
+    lhs.init_estimate == rhs.init_estimate;
 }
 
 template<typename ContainerAllocator1, typename ContainerAllocator2>
@@ -98,12 +116,12 @@ struct IsMessage< ::a1_slam::GtsamResultsRequest_<ContainerAllocator> const>
 
 template <class ContainerAllocator>
 struct IsFixedSize< ::a1_slam::GtsamResultsRequest_<ContainerAllocator> >
-  : TrueType
+  : FalseType
   { };
 
 template <class ContainerAllocator>
 struct IsFixedSize< ::a1_slam::GtsamResultsRequest_<ContainerAllocator> const>
-  : TrueType
+  : FalseType
   { };
 
 template <class ContainerAllocator>
@@ -122,12 +140,12 @@ struct MD5Sum< ::a1_slam::GtsamResultsRequest_<ContainerAllocator> >
 {
   static const char* value()
   {
-    return "0813fe7539f367d34151c5a6cfd4dacd";
+    return "0daaec3a4a618092d7b420d174078c0f";
   }
 
   static const char* value(const ::a1_slam::GtsamResultsRequest_<ContainerAllocator>&) { return value(); }
-  static const uint64_t static_value1 = 0x0813fe7539f367d3ULL;
-  static const uint64_t static_value2 = 0x4151c5a6cfd4dacdULL;
+  static const uint64_t static_value1 = 0x0daaec3a4a618092ULL;
+  static const uint64_t static_value2 = 0xd7b420d174078c0fULL;
 };
 
 template<class ContainerAllocator>
@@ -146,7 +164,10 @@ struct Definition< ::a1_slam::GtsamResultsRequest_<ContainerAllocator> >
 {
   static const char* value()
   {
-    return "int8 req\n"
+    return "string factor_type\n"
+"string factor\n"
+"int64 key\n"
+"string init_estimate\n"
 ;
   }
 
@@ -165,7 +186,10 @@ namespace serialization
   {
     template<typename Stream, typename T> inline static void allInOne(Stream& stream, T m)
     {
-      stream.next(m.req);
+      stream.next(m.factor_type);
+      stream.next(m.factor);
+      stream.next(m.key);
+      stream.next(m.init_estimate);
     }
 
     ROS_DECLARE_ALLINONE_SERIALIZER
@@ -184,8 +208,14 @@ struct Printer< ::a1_slam::GtsamResultsRequest_<ContainerAllocator> >
 {
   template<typename Stream> static void stream(Stream& s, const std::string& indent, const ::a1_slam::GtsamResultsRequest_<ContainerAllocator>& v)
   {
-    s << indent << "req: ";
-    Printer<int8_t>::stream(s, indent + "  ", v.req);
+    s << indent << "factor_type: ";
+    Printer<std::basic_string<char, std::char_traits<char>, typename ContainerAllocator::template rebind<char>::other > >::stream(s, indent + "  ", v.factor_type);
+    s << indent << "factor: ";
+    Printer<std::basic_string<char, std::char_traits<char>, typename ContainerAllocator::template rebind<char>::other > >::stream(s, indent + "  ", v.factor);
+    s << indent << "key: ";
+    Printer<int64_t>::stream(s, indent + "  ", v.key);
+    s << indent << "init_estimate: ";
+    Printer<std::basic_string<char, std::char_traits<char>, typename ContainerAllocator::template rebind<char>::other > >::stream(s, indent + "  ", v.init_estimate);
   }
 };
 

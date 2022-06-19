@@ -1,8 +1,0 @@
-prefix=/home/jerredchen/borglab/A1_SLAM/SLAM/devel
-
-Name: a1_pose_slam
-Description: Description of a1_pose_slam
-Version: 0.1.0
-Cflags: -I/home/jerredchen/borglab/A1_SLAM/SLAM/devel/include
-Libs: -L${prefix}/lib 
-Requires: message_runtime std_msgs geometry_msgs sensor_msgs

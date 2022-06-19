@@ -17,24 +17,11 @@ find_package(catkin REQUIRED COMPONENTS
 
 catkin_python_setup()
 
-# Generate messages in the 'msg' folder
-add_message_files(
-  FILES
-  MotorCmd.msg
-  MotorState.msg
-  Cartesian.msg
-  IMU.msg
-  LED.msg
-  LowCmd.msg
-  LowState.msg
-  HighCmd.msg
-  HighState.msg
-)
-
 # Generate services in the 'srv' folder
 add_service_files(
   FILES
   GtsamResults.srv
+  FinalResults.srv
 )
 
 # Generate added messages and services with any dependencies listed here
@@ -78,7 +65,8 @@ include_directories(
 ## Mark executable scripts (Python etc.) for installation
 ## in contrast to setup.py, you can choose the destination
 catkin_install_python(PROGRAMS
-  src/nodes/PoseSLAM_node.py
+  src/nodes/Lidar2DNode.py
+  src/nodes/OptimizerNode.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
@@ -93,9 +81,9 @@ install(
 ## Testing ##
 #############
 
-if(CATKIN_ENABLE_TESTING)
-  find_package(rostest REQUIRED)
-  add_rostest(test/test_a1_slam.test)
-  catkin_add_nosetests(test/test_IMU_helpers.py)
-  catkin_add_nosetests(test/test_LIDAR_2D_helpers.py)
-endif()
+# if(CATKIN_ENABLE_TESTING)
+#   find_package(rostest REQUIRED)
+#   add_rostest(test/test_a1_slam.test)
+  # catkin_add_nosetests(test/test_IMU_helpers.py)
+  # catkin_add_nosetests(test/test_LIDAR_2D_helpers.py)
+# endif()

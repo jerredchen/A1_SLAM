@@ -8,13 +8,16 @@ import struct
 
 
 class GtsamResultsRequest(genpy.Message):
-  _md5sum = "0813fe7539f367d34151c5a6cfd4dacd"
+  _md5sum = "0daaec3a4a618092d7b420d174078c0f"
   _type = "a1_slam/GtsamResultsRequest"
   _has_header = False  # flag to mark the presence of a Header object
-  _full_text = """int8 req
+  _full_text = """string factor_type
+string factor
+int64 key
+string init_estimate
 """
-  __slots__ = ['req']
-  _slot_types = ['int8']
+  __slots__ = ['factor_type','factor','key','init_estimate']
+  _slot_types = ['string','string','int64','string']
 
   def __init__(self, *args, **kwds):
     """
@@ -24,7 +27,7 @@ class GtsamResultsRequest(genpy.Message):
     changes.  You cannot mix in-order arguments and keyword arguments.
 
     The available fields are:
-       req
+       factor_type,factor,key,init_estimate
 
     :param args: complete set of field values, in .msg order
     :param kwds: use keyword arguments corresponding to message field names
@@ -33,10 +36,19 @@ class GtsamResultsRequest(genpy.Message):
     if args or kwds:
       super(GtsamResultsRequest, self).__init__(*args, **kwds)
       # message fields cannot be None, assign default values for those that are
-      if self.req is None:
-        self.req = 0
+      if self.factor_type is None:
+        self.factor_type = ''
+      if self.factor is None:
+        self.factor = ''
+      if self.key is None:
+        self.key = 0
+      if self.init_estimate is None:
+        self.init_estimate = ''
     else:
-      self.req = 0
+      self.factor_type = ''
+      self.factor = ''
+      self.key = 0
+      self.init_estimate = ''
 
   def _get_types(self):
     """
@@ -50,8 +62,26 @@ class GtsamResultsRequest(genpy.Message):
     :param buff: buffer, ``StringIO``
     """
     try:
-      _x = self.req
-      buff.write(_get_struct_b().pack(_x))
+      _x = self.factor_type
+      length = len(_x)
+      if python3 or type(_x) == unicode:
+        _x = _x.encode('utf-8')
+        length = len(_x)
+      buff.write(struct.Struct('<I%ss'%length).pack(length, _x))
+      _x = self.factor
+      length = len(_x)
+      if python3 or type(_x) == unicode:
+        _x = _x.encode('utf-8')
+        length = len(_x)
+      buff.write(struct.Struct('<I%ss'%length).pack(length, _x))
+      _x = self.key
+      buff.write(_get_struct_q().pack(_x))
+      _x = self.init_estimate
+      length = len(_x)
+      if python3 or type(_x) == unicode:
+        _x = _x.encode('utf-8')
+        length = len(_x)
+      buff.write(struct.Struct('<I%ss'%length).pack(length, _x))
     except struct.error as se: self._check_types(struct.error("%s: '%s' when writing '%s'" % (type(se), str(se), str(locals().get('_x', self)))))
     except TypeError as te: self._check_types(ValueError("%s: '%s' when writing '%s'" % (type(te), str(te), str(locals().get('_x', self)))))
 
@@ -65,8 +95,35 @@ class GtsamResultsRequest(genpy.Message):
     try:
       end = 0
       start = end
-      end += 1
-      (self.req,) = _get_struct_b().unpack(str[start:end])
+      end += 4
+      (length,) = _struct_I.unpack(str[start:end])
+      start = end
+      end += length
+      if python3:
+        self.factor_type = str[start:end].decode('utf-8', 'rosmsg')
+      else:
+        self.factor_type = str[start:end]
+      start = end
+      end += 4
+      (length,) = _struct_I.unpack(str[start:end])
+      start = end
+      end += length
+      if python3:
+        self.factor = str[start:end].decode('utf-8', 'rosmsg')
+      else:
+        self.factor = str[start:end]
+      start = end
+      end += 8
+      (self.key,) = _get_struct_q().unpack(str[start:end])
+      start = end
+      end += 4
+      (length,) = _struct_I.unpack(str[start:end])
+      start = end
+      end += length
+      if python3:
+        self.init_estimate = str[start:end].decode('utf-8', 'rosmsg')
+      else:
+        self.init_estimate = str[start:end]
       return self
     except struct.error as e:
       raise genpy.DeserializationError(e)  # most likely buffer underfill
@@ -79,8 +136,26 @@ class GtsamResultsRequest(genpy.Message):
     :param numpy: numpy python module
     """
     try:
-      _x = self.req
-      buff.write(_get_struct_b().pack(_x))
+      _x = self.factor_type
+      length = len(_x)
+      if python3 or type(_x) == unicode:
+        _x = _x.encode('utf-8')
+        length = len(_x)
+      buff.write(struct.Struct('<I%ss'%length).pack(length, _x))
+      _x = self.factor
+      length = len(_x)
+      if python3 or type(_x) == unicode:
+        _x = _x.encode('utf-8')
+        length = len(_x)
+      buff.write(struct.Struct('<I%ss'%length).pack(length, _x))
+      _x = self.key
+      buff.write(_get_struct_q().pack(_x))
+      _x = self.init_estimate
+      length = len(_x)
+      if python3 or type(_x) == unicode:
+        _x = _x.encode('utf-8')
+        length = len(_x)
+      buff.write(struct.Struct('<I%ss'%length).pack(length, _x))
     except struct.error as se: self._check_types(struct.error("%s: '%s' when writing '%s'" % (type(se), str(se), str(locals().get('_x', self)))))
     except TypeError as te: self._check_types(ValueError("%s: '%s' when writing '%s'" % (type(te), str(te), str(locals().get('_x', self)))))
 
@@ -95,8 +170,35 @@ class GtsamResultsRequest(genpy.Message):
     try:
       end = 0
       start = end
-      end += 1
-      (self.req,) = _get_struct_b().unpack(str[start:end])
+      end += 4
+      (length,) = _struct_I.unpack(str[start:end])
+      start = end
+      end += length
+      if python3:
+        self.factor_type = str[start:end].decode('utf-8', 'rosmsg')
+      else:
+        self.factor_type = str[start:end]
+      start = end
+      end += 4
+      (length,) = _struct_I.unpack(str[start:end])
+      start = end
+      end += length
+      if python3:
+        self.factor = str[start:end].decode('utf-8', 'rosmsg')
+      else:
+        self.factor = str[start:end]
+      start = end
+      end += 8
+      (self.key,) = _get_struct_q().unpack(str[start:end])
+      start = end
+      end += 4
+      (length,) = _struct_I.unpack(str[start:end])
+      start = end
+      end += length
+      if python3:
+        self.init_estimate = str[start:end].decode('utf-8', 'rosmsg')
+      else:
+        self.init_estimate = str[start:end]
       return self
     except struct.error as e:
       raise genpy.DeserializationError(e)  # most likely buffer underfill
@@ -105,12 +207,12 @@ _struct_I = genpy.struct_I
 def _get_struct_I():
     global _struct_I
     return _struct_I
-_struct_b = None
-def _get_struct_b():
-    global _struct_b
-    if _struct_b is None:
-        _struct_b = struct.Struct("<b")
-    return _struct_b
+_struct_q = None
+def _get_struct_q():
+    global _struct_q
+    if _struct_q is None:
+        _struct_q = struct.Struct("<q")
+    return _struct_q
 # This Python file uses the following encoding: utf-8
 """autogenerated by genpy from a1_slam/GtsamResultsResponse.msg. Do not edit."""
 import codecs
@@ -121,12 +223,12 @@ import struct
 
 
 class GtsamResultsResponse(genpy.Message):
-  _md5sum = "994972b6e03928b2476860ce6c4c8e17"
+  _md5sum = "050d718085d2969bac3160f48f51460c"
   _type = "a1_slam/GtsamResultsResponse"
   _has_header = False  # flag to mark the presence of a Header object
-  _full_text = """string str
+  _full_text = """string results
 """
-  __slots__ = ['str']
+  __slots__ = ['results']
   _slot_types = ['string']
 
   def __init__(self, *args, **kwds):
@@ -137,7 +239,7 @@ class GtsamResultsResponse(genpy.Message):
     changes.  You cannot mix in-order arguments and keyword arguments.
 
     The available fields are:
-       str
+       results
 
     :param args: complete set of field values, in .msg order
     :param kwds: use keyword arguments corresponding to message field names
@@ -146,10 +248,10 @@ class GtsamResultsResponse(genpy.Message):
     if args or kwds:
       super(GtsamResultsResponse, self).__init__(*args, **kwds)
       # message fields cannot be None, assign default values for those that are
-      if self.str is None:
-        self.str = ''
+      if self.results is None:
+        self.results = ''
     else:
-      self.str = ''
+      self.results = ''
 
   def _get_types(self):
     """
@@ -163,7 +265,7 @@ class GtsamResultsResponse(genpy.Message):
     :param buff: buffer, ``StringIO``
     """
     try:
-      _x = self.str
+      _x = self.results
       length = len(_x)
       if python3 or type(_x) == unicode:
         _x = _x.encode('utf-8')
@@ -187,9 +289,9 @@ class GtsamResultsResponse(genpy.Message):
       start = end
       end += length
       if python3:
-        self.str = str[start:end].decode('utf-8', 'rosmsg')
+        self.results = str[start:end].decode('utf-8', 'rosmsg')
       else:
-        self.str = str[start:end]
+        self.results = str[start:end]
       return self
     except struct.error as e:
       raise genpy.DeserializationError(e)  # most likely buffer underfill
@@ -202,7 +304,7 @@ class GtsamResultsResponse(genpy.Message):
     :param numpy: numpy python module
     """
     try:
-      _x = self.str
+      _x = self.results
       length = len(_x)
       if python3 or type(_x) == unicode:
         _x = _x.encode('utf-8')
@@ -227,9 +329,9 @@ class GtsamResultsResponse(genpy.Message):
       start = end
       end += length
       if python3:
-        self.str = str[start:end].decode('utf-8', 'rosmsg')
+        self.results = str[start:end].decode('utf-8', 'rosmsg')
       else:
-        self.str = str[start:end]
+        self.results = str[start:end]
       return self
     except struct.error as e:
       raise genpy.DeserializationError(e)  # most likely buffer underfill
@@ -240,6 +342,6 @@ def _get_struct_I():
     return _struct_I
 class GtsamResults(object):
   _type          = 'a1_slam/GtsamResults'
-  _md5sum = '7189306d182a38b37d781470320bb653'
+  _md5sum = '0e35ec748ec070bc1eff3fd9921a52fc'
   _request_class  = GtsamResultsRequest
   _response_class = GtsamResultsResponse

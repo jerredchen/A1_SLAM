@@ -4,7 +4,7 @@ import a1_slam
 import gtsam
 import numpy as np
 import rospy
-from a1_slam.msg import HighState
+from unitree_legged_msgs.msg import HighState
 from a1_slam.srv import GtsamResults
 from gtsam.symbol_shorthand import B, V, X
 from gtsam.utils.test_case import GtsamTestCase
