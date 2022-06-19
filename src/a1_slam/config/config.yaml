@@ -54,7 +54,7 @@
 
     submap_length: 5,
 
-    registration: point-to-line
+    registration: vanilla
 
   },
 
