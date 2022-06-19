@@ -19,7 +19,7 @@ class OptimizerNode():
 
         # Instantiate publisher attributes.
         self.pose_publisher = rospy.Publisher(
-            "pose_estimate", PoseStamped, queue_size=10)
+            "pose_estimate", PoseStamped, queue_size=5)
 
         # Instantiate factor graph and optimizer attributes.
         self.graph = gtsam.NonlinearFactorGraph()
