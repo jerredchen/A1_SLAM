@@ -11,38 +11,40 @@ from a1_slam.msg import HighState
 from a1_slam.srv import GtsamResults
 from collections import deque
 from gtsam.symbol_shorthand import B, V, X
-from geometry_msgs.msg import Pose, Pose2D
+from geometry_msgs.msg import PoseStamped
 from sensor_msgs.msg import LaserScan, PointCloud2
 from sensors import IMU_helpers, LIDAR_2D_helpers
 
 
 N_GRAVITY = [0, 0, -9.81]
 
+
 class PoseSlamNode():
     def __init__(self):
 
-        # Instantiate publisher global variables
-        self.pose_publisher = None
+        # Instantiate publisher attributes.
+        self.pose_publisher = rospy.Publisher("pose_estimate", PoseStamped, queue_size=5)
 
-        # Instantiate actor graph and optimizer global variables
-        self.state_index = 1
+        # Instantiate factor graph and optimizer attributes.
+        self.state_index = 0
         self.graph = gtsam.NonlinearFactorGraph()
         self.initial_estimates = gtsam.Values()
         self.results = gtsam.Values()
-        self.isam = None
+        self.isam = gtsam.ISAM2(gtsam.ISAM2Params())
 
-        # Instantiate IMU global variables
-        self.pim = None
+        # Instantiate IMU related attributes.
+        self.pim = gtsam.PreintegratedImuMeasurements(
+            gtsam.PreintegrationParams.MakeSharedU())
         self.timestamp = 0
-        # Instantiate 2D LIDAR global variables
-        self.icp_noise = None
-        self.submap_scans = deque([], rospy.get_param('/lidar_submap_length'))
 
+        # Instantiate 2D LIDAR related attributes.
+        self.icp_noise = gtsam.noiseModel.Diagonal.Sigmas(np.ones((3,)))
+        self.submap_scans = deque([], rospy.get_param('/lidar_submap_length'))
 
     def send_results_callback(self, request):
         serialized_str = self.results.serialize()
+        self.sent_results = True
         return serialized_str
-
 
     def imu_callback(self, msg):
         """If imu_callback is called:
@@ -56,7 +58,6 @@ class PoseSlamNode():
             N_GRAVITY
         )
         self.timestamp = curr_timestamp
-
 
     def lidar_callback(self, msg):
         """If lidar_callback is called:
@@ -87,7 +88,6 @@ class PoseSlamNode():
         self.submap_scans.append(scan)
         self.optimize_graph()
 
-
     def optimize_graph(self):
 
         rospy.loginfo("optimizing factor graph")
@@ -97,32 +97,35 @@ class PoseSlamNode():
         # Perform an iSAM2 incremental update.
         self.isam.update(self.graph, self.initial_estimates)
         self.results = self.isam.calculateEstimate()
-        if self.results.size() > prev_results_size:
-            if rospy.get_param('use_2dlidar'):
-                pose_estimate = self.results.atPose2(X(self.state_index))
-                pose_msg = Pose2D()
-                pose_msg.x = pose_estimate.x()
-                pose_msg.y = pose_estimate.y()
-                pose_msg.theta = pose_estimate.theta()
-                self.pose_publisher.publish(pose_msg)
-            else:
-                pose_estimate = self.results.atPose3(X(self.state_index))
-                pose_msg = Pose()
-                pose_msg.position.x = pose_estimate.x()
-                pose_msg.position.y = pose_estimate.y()
-                pose_msg.position.y = pose_estimate.z()
-                quaternion = gtsam.rotation().quaternion()
-                pose_msg.orientation.x = quaternion[1]
-                pose_msg.orientation.y = quaternion[2]
-                pose_msg.orientation.z = quaternion[3]
-                pose_msg.orientation.w = quaternion[0]
-                self.pose_publisher.publish(pose_msg)
 
-        # Clear the graph and initial estimates.
+        # Publish pose if new pose was added to trajectory.
+        if self.results.size() > prev_results_size:
+            self.publish_pose()
+
+        # Clear the graph and initial estimates, and update the state index.
         self.graph = gtsam.NonlinearFactorGraph()
         self.initial_estimates.clear()
         self.state_index += 1
 
+    def publish_pose(self):
+        pose_msg = PoseStamped()
+        pose_msg.header.frame_id = "body"
+        if rospy.get_param('use_2dlidar'):
+            pose_estimate = self.results.atPose2(X(self.state_index))
+            pose_msg.pose.position.x = pose_estimate.x()
+            pose_msg.pose.position.y = pose_estimate.y()
+            quaternion = gtsam.Rot3.Ypr(pose_estimate.theta(), 0, 0).quaternion()
+        else:
+            pose_estimate = self.results.atPose3(X(self.state_index))
+            pose_msg.pose.position.x = pose_estimate.x()
+            pose_msg.pose.position.y = pose_estimate.y()
+            pose_msg.pose.position.y = pose_estimate.z()
+            quaternion = gtsam.rotation().quaternion()
+        pose_msg.pose.orientation.x = quaternion[1]
+        pose_msg.pose.orientation.y = quaternion[2]
+        pose_msg.pose.orientation.z = quaternion[3]
+        pose_msg.pose.orientation.w = quaternion[0]
+        self.pose_publisher.publish(pose_msg)
 
     def perform_pose_slam(self):
         """
@@ -147,21 +150,18 @@ class PoseSlamNode():
         if use_imu:
             self.graph, self.initial_estimates = IMU_helpers.create_imu_graph_and_params(
                 self.graph, self.initial_estimates)
-            self.pose_publisher = rospy.Publisher("Pose", Pose, queue_size=5)
 
-            # Instantiate the IMU subscriber
-            imu_topic = rospy.get_param("/imu_topic")
-            rospy.Subscriber(imu_topic, HighState, callback=self.imu_callback)
+            rospy.Subscriber(rospy.get_param("/imu_topic"),
+                             HighState,
+                             callback=self.imu_callback)
 
         if use_2dlidar:
             self.graph, self.initial_estimates, self.icp_noise = LIDAR_2D_helpers.create_lidar_graph_and_params(
                 self.graph, self.initial_estimates)
-            self.pose_publisher = rospy.Publisher("Pose", Pose2D, queue_size=5)
 
-            # Instantiate the LIDAR subscriber
-            lidar_topic = rospy.get_param("/2dlidar_topic")
-            rospy.Subscriber(lidar_topic, LaserScan, callback=self.lidar_callback)
-
+            rospy.Subscriber(rospy.get_param("/2dlidar_topic"),
+                             LaserScan,
+                             callback=self.lidar_callback)
         if use_depth:
             pass
 
@@ -172,13 +172,15 @@ class PoseSlamNode():
         parameters = gtsam.ISAM2Params()
         self.isam = gtsam.ISAM2(parameters)
 
-        # Perform an iSAM2 incremental update.
+        # Perform an iSAM2 update to populate the results and publish the start pose.
         self.isam.update(self.graph, self.initial_estimates)
         self.results = self.isam.calculateEstimate()
+        self.publish_pose()
 
-        # Clear the graph and initial estimates.
+        # Clear the graph and initial estimates, and update the state index.
         self.graph = gtsam.NonlinearFactorGraph()
         self.initial_estimates.clear()
+        self.state_index += 1
 
         rospy.spin()
 
