@@ -5,7 +5,7 @@ import gtsam
 import numpy as np
 import rospy
 from unitree_legged_msgs.msg import HighState
-from a1_slam.srv import GtsamResults
+from a1_slam.srv import GtsamResults, FinalResults
 from gtsam.symbol_shorthand import B, V, X
 from gtsam.utils.test_case import GtsamTestCase
 from geometry_msgs.msg import PoseStamped, Pose, Pose2D
@@ -18,17 +18,20 @@ class TestPoseSLAM(GtsamTestCase):
     def setUp(self):
         rospy.init_node('test_node', anonymous=True)
         rospy.loginfo("Initialized test_node")
-        imu_topic = rospy.get_param('/imu_topic')
-        lidar2d_topic = rospy.get_param('/2dlidar_topic')
+        imu_topic = rospy.get_param('/imu/topic')
+        lidar2d_topic = rospy.get_param('/lidar2d/topic')
         self.imu_pub = rospy.Publisher(imu_topic, HighState)
         self.lidar2d_pub = rospy.Publisher(lidar2d_topic, LaserScan)
-        rospy.wait_for_service('send_results')
-        self.send_results = rospy.ServiceProxy('send_results', GtsamResults)
+        rospy.wait_for_service('final_results_service')
+        self.send_results = rospy.ServiceProxy('final_results_service', FinalResults)
+        rospy.loginfo(f"{self.lidar2d_pub.get_num_connections()}")
         self.ranges_original = np.array(
               [np.inf]*4
             + [2, 2/np.sqrt(3), 1, 2/np.sqrt(3), 2]
             + [np.inf]*3
         )
+        rospy.sleep(2)
+        rospy.loginfo(f"{self.lidar2d_pub.get_num_connections()}")
 
     def publish_msgs(self, publisher, msgs, rate):
         ros_rate = rospy.Rate(rate)
@@ -39,18 +42,16 @@ class TestPoseSLAM(GtsamTestCase):
 
     def generate_stationary_imu_data(self):
         """Generate IMU measurements when stationary."""
-        for i in range(500):
+        for _ in range(500):
             highstate = HighState()
-            # highstate.header.stamp.secs = i / 100
             highstate.imu.accelerometer = [0, 0, 9.81]
             highstate.imu.gyroscope = [0, 0, 0]
             yield highstate
 
     def generate_acceleration_imu_data(self):
         """Generate IMU measurements when accelerating."""
-        for i in range(500):
+        for _ in range(500):
             highstate = HighState()
-            # highstate.header.stamp.secs = i / 100
             highstate.imu.accelerometer = [1, 0, 9.81]
             highstate.imu.gyroscope = [0, 0, 0]
             yield highstate
@@ -68,9 +69,6 @@ class TestPoseSLAM(GtsamTestCase):
             yield scan
 
     # def test_stationary_imu_poses(self):
-    #     rospy.set_param('/use_imu', True)
-    #     rospy.set_param('/use_2dlidar', False)
-    #     rospy.set_param('/use_depth', False)
     #     self.publish_msgs(self.imu_pub, self.generate_stationary_imu_data(), 100)
 
     #     # Generate the expected pose, velocity, and bias values.
@@ -87,9 +85,6 @@ class TestPoseSLAM(GtsamTestCase):
     #     self.gtsamAssertEquals(actual, expected)
 
     # def test_acceleration_imu_poses(self):
-    #     rospy.set_param('/use_imu', True)
-    #     rospy.set_param('/use_2dlidar', False)
-    #     rospy.set_param('/use_depth', False)
     #     self.publish_msgs(self.imu_pub, self.generate_stationary_imu_data(), 100)
 
     #     # Generate the expected pose, velocity, and bias values.
@@ -106,10 +101,11 @@ class TestPoseSLAM(GtsamTestCase):
     #     self.gtsamAssertEquals(actual, expected, 1e-3)
 
     def test_lidar_poses(self):
-        rospy.set_param('/use_imu', False)
-        rospy.set_param('/use_2dlidar', True)
-        rospy.set_param('/use_depth', False)
-        self.publish_msgs(self.lidar2d_pub, self.generate_lidar_data(), 10)
+        self.publish_msgs(
+            self.lidar2d_pub,
+            self.generate_lidar_data(),
+            10
+        )
 
         # Generate the expected LIDAR poses.
         expected = gtsam.Values()
@@ -119,7 +115,7 @@ class TestPoseSLAM(GtsamTestCase):
         # Obtain the actual poses.
         response = self.send_results()
         actual = gtsam.Values()
-        actual.deserialize(response.str)
+        actual.deserialize(response.results)
         self.gtsamAssertEquals(actual, expected, 1e-2)
 
 
