@@ -1,6 +1,6 @@
 <launch>
     <rosparam file="$(find a1_slam)/config/config.yaml" />
     <node pkg="tf2_ros" type="static_transform_publisher" name="world_broadcaster" args="0 0 0 0 0 0 1 world map"/>
-    <node pkg="a1_slam" type="Lidar2DNode.py" name="lidar_node"/>
+    <node pkg="a1_slam" type="Lidar2DNode.py" name="lidar2d_node"/>
     <node pkg="a1_slam" type="OptimizerNode.py" name="optimizer_node"/>
 </launch>
