@@ -1,6 +1,6 @@
 <launch>
     <rosparam file="$(find a1_slam)/test/test_config/test_config.yaml" />
-    <node pkg="a1_slam" type="OptimizerNode.py" name="optimizer_node"/>
     <node pkg="a1_slam" type="Lidar2DNode.py" name="lidar2d_node"/>
-    <test pkg="a1_slam" type="test_PoseSLAM.py" test-name="test_slam_ros_integration"/>
+    <node pkg="a1_slam" type="OptimizerNode.py" name="optimizer_node"/>
+    <test pkg="a1_slam" type="test_PoseSLAM.py" test-name="slam_ros_integration"/>
 </launch>
