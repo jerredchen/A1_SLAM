@@ -1,6 +1,5 @@
 string factor_type
 string factor
-int64 key
 string init_estimate
 ---
 string results
