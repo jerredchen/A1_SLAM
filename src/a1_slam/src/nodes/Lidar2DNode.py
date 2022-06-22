@@ -5,6 +5,7 @@
 Node for processing 2D LIDAR scans.
 """
 import rospy
+import threading
 
 import gtsam
 import numpy as np
@@ -13,6 +14,7 @@ from collections import deque
 from gtsam.symbol_shorthand import X
 from registration import icp_line, vanilla_ICP
 from sensor_msgs.msg import LaserScan
+
 
 class Lidar2DNode:
 
@@ -24,11 +26,8 @@ class Lidar2DNode:
 
         # Instantiate 2D LIDAR related attributes.
         self.icp_noise = gtsam.noiseModel.Diagonal.Sigmas(np.ones((3,)))
-        self.submap_scans = deque([], rospy.get_param('/lidar2d/submap_length'))
-
-        # Instantiate service for optimizer
-        rospy.wait_for_service('optimizer_service')
-        self.request_optimizer = rospy.ServiceProxy('optimizer_service', GtsamResults, persistent=True)
+        self.submap_scans = []
+        self.request_optimizer = None
 
     def parse_config_parameters(self,
                                 prior_pose_estimate,
@@ -118,9 +117,12 @@ class Lidar2DNode:
             wTa, wTb = self.results.atPose2(X(a)), self.results.atPose2(X(b))
             initial_transform = wTa.between(wTb)
         elif b > 1:
-            wTa, wTb = self.results.atPose2(X(b-2)), self.results.atPose2(X(b-1))
-            initial_transform = wTa.between(wTb)
-            initial_estimate = wTb.compose(initial_transform)
+            if X(b-1) != X(a):
+                rospy.logerr(f"KEY A IS NOT AS EXPECTED")
+            wTp, wTq = self.results.atPose2(
+                X(b-2)), self.results.atPose2(X(b-1))
+            initial_transform = wTp.between(wTq)
+            initial_estimate = wTq.compose(initial_transform)
         else:
             initial_transform = gtsam.Pose2()
             initial_estimate = self.results.atPose2(X(0))
@@ -142,37 +144,78 @@ class Lidar2DNode:
         """
         scan = self.preprocess_measurement(msg)
         if len(self.submap_scans) == 0:
-            self.submap_scans.append(scan)
+            self.submap_scans.append((0, scan))
             return
         factor, initial_estimate = self.create_lidar_factor(
             self.state_index - 1,
             self.state_index,
-            self.submap_scans[-1],
+            self.submap_scans[-1][1],
             scan,
             rospy.get_param('/lidar2d/registration')
         )
-        self.submap_scans.append(scan)
 
         # Request optimized results from the optimizer service.
         serialized_factor = factor.serialize()
-        if initial_estimate is not None:
-            serialized_estimate = initial_estimate.serialize()
-        else:
-            serialized_estimate = ""
+        serialized_estimate = initial_estimate.serialize()
+
+        k1, k2 = self.state_index - 1, self.state_index
+        rospy.loginfo(f"requesting results for {k1=}, {k2=}")
         response = self.request_optimizer(
             "BetweenFactorPose2",
             serialized_factor,
-            X(self.state_index),
             serialized_estimate
         )
         received_results = gtsam.Values()
         received_results.deserialize(response.results)
         self.results = received_results
+        self.submap_scans.append((self.state_index, scan))
         self.state_index += 1
+        rospy.loginfo(f"received results for {k1=}, {k2=} with {received_results=}")
+
+    def optimize_submap_callback(self, event=None):
+        if len(self.submap_scans) <= 2:
+            return
+        submap = self.submap_scans.copy()
+        new_index, newest_scan = submap[-1]
+        for i in range(len(submap)-2):
+            index, scan = submap[i]
+            factor, _ = self.create_lidar_factor(
+                index,
+                new_index,
+                scan,
+                newest_scan,
+                rospy.get_param('/lidar2d/registration')
+            )
+            rospy.loginfo(f"expected {0.1*(new_index-index)}, actual {factor.measured()}")
+
+            # Request optimized results from the optimizer service.
+            serialized_factor = factor.serialize()
+            k1, k2 = index, new_index
+            rospy.loginfo(f"requesting results for {k1=}, {k2=}")
+            try:
+                response = self.request_optimizer(
+                    "BetweenFactorPose2",
+                    serialized_factor,
+                    ""
+                )
+                received_results = gtsam.Values()
+                received_results.deserialize(response.results)
+                self.results = received_results
+                rospy.loginfo(f"received results for {k1=}, {k2=} with {received_results=}")
+            except rospy.service.ServiceException:
+                rospy.logwarn("Service /optimizer_service returned no response")
 
     def launch_lidar_node(self):
 
         rospy.init_node('lidar_node', anonymous=True)
+
+        self.submap_scans = deque(
+            [], rospy.get_param('/lidar2d/submap_length'))
+
+        # Instantiate service for optimizer
+        rospy.wait_for_service('optimizer_service')
+        self.request_optimizer = rospy.ServiceProxy(
+            'optimizer_service', GtsamResults, persistent=True)
 
         # Obtain the poses estimate, in meters and degrees.
         prior_pose_estimate = rospy.get_param('/prior_pose_estimate')
@@ -193,7 +236,6 @@ class Lidar2DNode:
         response = self.request_optimizer(
             "PriorFactorPose2",
             serialized_factor,
-            X(self.state_index),
             serialized_estimate
         )
         received_results = gtsam.Values()
@@ -203,6 +245,8 @@ class Lidar2DNode:
 
         topic = rospy.get_param('/lidar2d/topic')
         rospy.Subscriber(topic, LaserScan, self.lidar_callback)
+
+        rospy.Timer(rospy.Duration(0.1), self.optimize_submap_callback)
 
         rospy.spin()
 

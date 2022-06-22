@@ -38,7 +38,7 @@ class TestPoseSLAM(GtsamTestCase):
             + [np.inf]*3
         )
         # Sleep to allow for subscribers to connect to the created topics.
-        rospy.sleep(2)
+        rospy.sleep(1)
     
     ############ Publisher/subscriber relevant functions ############
 
@@ -111,7 +111,7 @@ class TestPoseSLAM(GtsamTestCase):
 
     def generate_lidar_data(self):
         """Generate LIDAR measurements when moving."""
-        for i in range(5):
+        for i in range(10):
             scan = LaserScan()
             scan.header.stamp = rospy.Time.now()
             scan.angle_increment = -np.pi/6
@@ -161,7 +161,7 @@ class TestPoseSLAM(GtsamTestCase):
 
         # Generate the expected LIDAR poses.
         expected = gtsam.Values()
-        for i in range(5):
+        for i in range(10):
             expected.insert(X(i), gtsam.Pose2(0.1*i, 0, 0))
 
         # Sleep to finish obtaining the trajectory before clearing.

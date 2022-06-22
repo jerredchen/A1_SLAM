@@ -35,10 +35,10 @@ class OptimizerNode():
     def send_and_clear_results_callback(self, request):
         serialized_str = self.results.serialize()
         self.results.clear()
+        rospy.logwarn("RESULTS ARE CLEARED")
         return serialized_str
 
     def optimize_graph_callback(self, request):
-        rospy.loginfo("optimizing factor graph")
 
         factor_type = request.factor_type
         factor, init_estimate = None, None
@@ -65,11 +65,15 @@ class OptimizerNode():
         factor.deserialize(request.factor)
         self.graph.add(factor)
 
+        key_vec = factor.keys()
+        if len(key_vec) > 1:
+            k1, k2 = key_vec[0] % 100 - 20, key_vec[1] % 100 - 20
+            rospy.loginfo(f"optimizing factor graph for {k1=}, {k2=}")
+
         # Obtain the keys associated with the factor.
         key_vector = factor.keys()
         if len(request.init_estimate) != 0:
             init_estimate.deserialize(request.init_estimate)
-            
             self.initial_estimates.insert(key_vector[-1], init_estimate)
 
         prev_results_size = self.results.size()
@@ -77,6 +81,7 @@ class OptimizerNode():
         # Perform an iSAM2 incremental update.
         self.isam.update(self.graph, self.initial_estimates)
         self.results = self.isam.calculateEstimate()
+        rospy.loginfo(f"{self.results=}")
 
         # Publish pose if new pose was added to trajectory.
         if self.results.size() > prev_results_size and (
@@ -91,7 +96,8 @@ class OptimizerNode():
 
         # Serialize the results to return.
         serialized_str = self.results.serialize()
-
+        if len(key_vec) > 1:
+            rospy.loginfo(f"optimizer sending results for {k1=}, {k2=}")
         return serialized_str
 
     def create_trajectory_callback(self, event=None):
@@ -102,7 +108,11 @@ class OptimizerNode():
             poses = gtsam.utilities.allPose3s(self.results)
         keys = gtsam.KeyVector(poses.keys())
         for key in keys:
-            trajectory.append(self.process_pose_message(key))
+            try:
+                pose_msg = self.process_pose_message(key)
+                trajectory.append(pose_msg)
+            except:
+                rospy.logwarn("Could not access key in results")
         self.publish_traj(trajectory)
 
     def process_pose_message(self, key):
@@ -130,7 +140,6 @@ class OptimizerNode():
     
     def publish_pose(self, pose_msg):
         self.pose_publisher.publish(pose_msg)
-        rospy.loginfo(f"publishing {pose_msg.header.seq=}")
 
     def publish_traj(self, trajectory):
         """Publish a Path message of the robot's trajectory."""
