@@ -62,8 +62,8 @@ class TestICP(GtsamTestCase):
     """
     Vertical line shift 1 units to the right.
     """
-    scan_a = np.array([[0, 0, 0, 0],[0, 1, 2, 3]])
-    scan_b = np.array([[1, 1, 1, 1],[0, 1, 2, 3]])
+    scan_a = np.array([[0, 0, 0, 0],[0, 1, 2, 3], [1, 1, 1, 1]])
+    scan_b = np.array([[1, 1, 1, 1],[0, 1, 2, 3], [1, 1, 1, 1]])
     aTb = gtsam.Pose2(1, 0, 0)
     actual_transform = vanilla_ICP.icp(scan_a, scan_b)
     self.gtsamAssertEquals(actual_transform, aTb, tol=1e-1)
@@ -80,8 +80,8 @@ class TestICP(GtsamTestCase):
     """
     Vertical line shifts 0.1 unit down.
     """
-    scan_a = np.array([[0, 0, 0, 0],[0, 1, 2, 3]])
-    scan_b = np.array([[0, 0, 0, 0],[-0.1, 0.9, 1.9, 2.9]])
+    scan_a = np.array([[0, 0, 0, 0],[0, 1, 2, 3], [1, 1, 1, 1]])
+    scan_b = np.array([[0, 0, 0, 0],[-0.1, 0.9, 1.9, 2.9], [1, 1, 1, 1]])
     aTb = gtsam.Pose2(0, -0.1, 0)
     actual_transform = vanilla_ICP.icp(scan_a, scan_b)
     self.gtsamAssertEquals(actual_transform, aTb, tol=1e-2)
@@ -90,8 +90,8 @@ class TestICP(GtsamTestCase):
     """
     Horizontal line shifts 0.4 unit left.
     """
-    scan_a = np.array([[0, 1, 2, 3],[0, 0, 0, 0]])
-    scan_b = np.array([[-0.4, 0.6, 1.6, 2.6],[0, 0, 0, 0]])
+    scan_a = np.array([[0, 1, 2, 3],[0, 0, 0, 0], [1, 1, 1, 1]])
+    scan_b = np.array([[-0.4, 0.6, 1.6, 2.6],[0, 0, 0, 0], [1, 1, 1, 1]])
     aTb = gtsam.Pose2(-0.4, 0, 0)
     actual_transform = vanilla_ICP.icp(scan_a, scan_b)
     self.gtsamAssertEquals(actual_transform, aTb, tol=1e-2)
