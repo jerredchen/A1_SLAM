@@ -13,19 +13,26 @@ from a1_slam.srv import GtsamResults
 from collections import deque
 from gtsam.symbol_shorthand import X
 from registration import icp_line, vanilla_ICP
-from sensor_msgs.msg import LaserScan
+from sensor_msgs import point_cloud2
+from sensor_msgs.msg import LaserScan, PointCloud2
+from std_msgs.msg import Header
 
 
 class Lidar2DNode:
 
     def __init__(self):
 
+        # Instantiate publisher attributes.
+        self.scan_publisher = rospy.Publisher(
+            "/transformed_clouds", PointCloud2, queue_size=5
+        )
+
         # Instantiate factor graph and optimizer attributes.
         self.state_index = 0
         self.results = gtsam.Values()
 
         # Instantiate 2D LIDAR related attributes.
-        self.icp_noise = gtsam.noiseModel.Diagonal.Sigmas(np.ones((3,)))
+        self.icp_noise_model = gtsam.noiseModel.Diagonal.Sigmas(np.ones((3,)))
         self.submap_scans = []
         self.request_optimizer = None
 
@@ -132,10 +139,10 @@ class Lidar2DNode:
         elif registration == "vanilla":
             aTb = vanilla_ICP.icp(scan_b, scan_a, initial_transform)
 
-        factor = gtsam.BetweenFactorPose2(X(a), X(b), aTb, self.icp_noise)
+        factor = gtsam.BetweenFactorPose2(X(a), X(b), aTb, self.icp_noise_model)
         return factor, initial_estimate
 
-    def lidar_callback(self, msg):
+    def lidar_callback(self, msg: LaserScan):
         """Processes the message from the LIDAR.
         1. Preprocesses ranges, turns into points.
         2. Create a corresponding factor and init estimate.
@@ -170,7 +177,8 @@ class Lidar2DNode:
         self.results = received_results
         self.submap_scans.append((self.state_index, scan))
         self.state_index += 1
-        rospy.loginfo(f"received results for {k1=}, {k2=} with {received_results=}")
+        rospy.loginfo(f"received results for {k1=}, {k2=}")
+        self.optimize_submap_callback()
 
     def optimize_submap_callback(self, event=None):
         if len(self.submap_scans) <= 2:
@@ -186,7 +194,6 @@ class Lidar2DNode:
                 newest_scan,
                 rospy.get_param('/lidar2d/registration')
             )
-            rospy.loginfo(f"expected {0.1*(new_index-index)}, actual {factor.measured()}")
 
             # Request optimized results from the optimizer service.
             serialized_factor = factor.serialize()
@@ -201,9 +208,30 @@ class Lidar2DNode:
                 received_results = gtsam.Values()
                 received_results.deserialize(response.results)
                 self.results = received_results
-                rospy.loginfo(f"received results for {k1=}, {k2=} with {received_results=}")
+                rospy.loginfo(f"received results for {k1=}, {k2=}")
             except rospy.service.ServiceException:
                 rospy.logwarn("Service /optimizer_service returned no response")
+        self.publish_transformed_scan(submap[0])
+
+    def publish_transformed_scan(self, scan_pair):
+        """Transform a scan into the world frame.
+        Args:
+            scan_pair: A tuple of (state_index, scan)
+        """
+        index, bTscan = scan_pair
+        # Obtain the pose of the body w.r.t. the world frame.
+        wTb = self.results.atPose2(X(index))
+        # Transform the scan from the body frame to the world frame.
+        wTscan = wTb.transformFrom(bTscan[:2])
+
+        # Reformat scan to be argument for creating point cloud.
+        wTscan = np.vstack((wTscan, np.zeros((1, wTscan.shape[1]))))
+        wTscan = wTscan.T
+        header = Header()
+        header.stamp = rospy.Time.now()
+        header.frame_id = "world"
+        pcd = point_cloud2.create_cloud_xyz32(header, wTscan)
+        self.scan_publisher.publish(pcd)
 
     def launch_lidar_node(self):
 
@@ -246,7 +274,7 @@ class Lidar2DNode:
         topic = rospy.get_param('/lidar2d/topic')
         rospy.Subscriber(topic, LaserScan, self.lidar_callback)
 
-        rospy.Timer(rospy.Duration(0.1), self.optimize_submap_callback)
+        # rospy.Timer(rospy.Duration(0.1), self.optimize_submap_callback)
 
         rospy.spin()
 
