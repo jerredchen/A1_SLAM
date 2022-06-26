@@ -61,8 +61,7 @@ class TestLIDAR2D(GtsamTestCase):
             scan.ranges.append(1.0 if i % 2 == 0 else np.sqrt(2))
         expected = np.array([
             [-1.0, -1.0, 0.0, 1.0, 1.0, 1.0, 0.0, -1.0],
-            [0.0, 1.0, 1.0, 1.0, 0.0, -1.0, -1.0, -1.0],
-            [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
+            [0.0, 1.0, 1.0, 1.0, 0.0, -1.0, -1.0, -1.0]
         ])
         actual = self.lidar_node.preprocess_measurement(scan)
         np.testing.assert_array_almost_equal(expected, actual, decimal=1e-5)
@@ -72,8 +71,8 @@ class TestLIDAR2D(GtsamTestCase):
 
         self.lidar_node.results.insert(X(0), gtsam.Pose2())
 
-        scan_a = np.array([[0.0, 0.5, 0.5], [0.0, 0.0, 1.0], [1.0, 1.0, 1.0]])
-        scan_b = np.array([[0.1, 0.6, 0.6], [0.0, 0.0, 1.0], [1.0, 1.0, 1.0]])
+        scan_a = np.array([[0.0, 0.5, 0.5], [0.0, 0.0, 1.0]])
+        scan_b = np.array([[0.1, 0.6, 0.6], [0.0, 0.0, 1.0]])
 
         actual_factor, actual_estimate = self.lidar_node.create_lidar_factor(
             0,

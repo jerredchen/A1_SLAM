@@ -5,14 +5,13 @@
 Node for processing 2D LIDAR scans.
 """
 import rospy
-import threading
 
 import gtsam
 import numpy as np
 from a1_slam.srv import GtsamResults
 from collections import deque
 from gtsam.symbol_shorthand import X
-from registration import icp_line, vanilla_ICP
+from registration import icp_line, icp
 from sensor_msgs import point_cloud2
 from sensor_msgs.msg import LaserScan, PointCloud2
 from std_msgs.msg import Header
@@ -97,8 +96,6 @@ class Lidar2DNode:
         # Remove all values in the array that are still 0.
         mask = scan[0] != 0
         scan = scan[:, mask]
-        # Append ones to make points homogenous.
-        scan = np.vstack((scan, np.ones((1, len(scan[0])))))
         return scan
 
     def create_lidar_factor(self,
@@ -117,30 +114,30 @@ class Lidar2DNode:
             registration: Specified ICP registration, default to point-to-line.
         Returns:
             factor: An odometry factor to be added to the factor graph.
-            initial_estimate: Initial estimate if a new state, None otherwise.
+            wTb_estimate: Initial estimate if a new state, None otherwise.
         """
-        initial_estimate = None
+        wTb_estimate = None
         if self.results.exists(X(b)):
             wTa, wTb = self.results.atPose2(X(a)), self.results.atPose2(X(b))
-            initial_transform = wTa.between(wTb)
+            init_aTb = wTa.between(wTb)
         elif b > 1:
             if X(b-1) != X(a):
                 rospy.logerr(f"KEY A IS NOT AS EXPECTED")
             wTp, wTq = self.results.atPose2(
                 X(b-2)), self.results.atPose2(X(b-1))
-            initial_transform = wTp.between(wTq)
-            initial_estimate = wTq.compose(initial_transform)
+            init_aTb = wTp.between(wTq)
+            wTb_estimate = wTq.compose(init_aTb)
         else:
-            initial_transform = gtsam.Pose2()
-            initial_estimate = self.results.atPose2(X(0))
+            init_aTb = gtsam.Pose2()
+            wTb_estimate = self.results.atPose2(X(0))
 
         if registration == "point-to-line":
-            aTb = icp_line.icp(scan_b, scan_a, initial_transform)
+            aTb = icp_line.icp(scan_a, scan_b, init_aTb)
         elif registration == "vanilla":
-            aTb = vanilla_ICP.icp(scan_b, scan_a, initial_transform)
+            aTb = icp.icp(scan_a, scan_b, init_aTb)
 
         factor = gtsam.BetweenFactorPose2(X(a), X(b), aTb, self.icp_noise_model)
-        return factor, initial_estimate
+        return factor, wTb_estimate
 
     def lidar_callback(self, msg: LaserScan):
         """Processes the message from the LIDAR.
