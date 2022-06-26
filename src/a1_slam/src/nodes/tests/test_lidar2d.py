@@ -19,7 +19,7 @@ class TestLIDAR2D(GtsamTestCase):
         self.icp_noise = gtsam.noiseModel.Diagonal.Sigmas([
             1e-3, 1e-3, 1e-3
         ])
-        self.lidar_node.icp_noise = self.icp_noise
+        self.lidar_node.icp_noise_model = self.icp_noise
 
     def test_parse_config_parameters(self):
         """Test the parsing of the config parameters."""
