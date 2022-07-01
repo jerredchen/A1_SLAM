@@ -11,7 +11,7 @@ import numpy as np
 from a1_slam.srv import GtsamResults
 from collections import deque
 from gtsam.symbol_shorthand import X
-from registration import icp_line, icp
+from registration import icp
 from sensor_msgs import point_cloud2
 from sensor_msgs.msg import LaserScan, PointCloud2
 from std_msgs.msg import Header
@@ -96,14 +96,18 @@ class Lidar2DNode:
         # Remove all values in the array that are still 0.
         mask = scan[0] != 0
         scan = scan[:, mask]
-        return scan
+
+        normals = None
+        if rospy.get_param('/lidar2d/registration') == 'point-to-line':
+            normals = icp.estimate_normals(scan, k_nearest=5)
+        return scan, normals
 
     def create_lidar_factor(self,
                             a: int,
                             b: int,
                             scan_a: np.ndarray,
                             scan_b: np.ndarray,
-                            registration="point-to-line"):
+                            normals=None):
         """Creates an odometry factor from LIDAR measurements to be
         added to the factor graph.
         Args:
@@ -131,11 +135,7 @@ class Lidar2DNode:
             init_aTb = gtsam.Pose2()
             wTb_estimate = self.results.atPose2(X(0))
 
-        if registration == "point-to-line":
-            aTb = icp_line.icp(scan_a, scan_b, init_aTb)
-        elif registration == "vanilla":
-            aTb = icp.icp(scan_a, scan_b, init_aTb)
-
+        aTb = icp.icp(scan_a, scan_b, init_aTb, normals)
         factor = gtsam.BetweenFactorPose2(X(a), X(b), aTb, self.icp_noise_model)
         return factor, wTb_estimate
 
@@ -146,16 +146,18 @@ class Lidar2DNode:
         3. Sends to optimizer server to update graph.
             - Receive updated results from optimizer.
         """
-        scan = self.preprocess_measurement(msg)
+        scan, normals = self.preprocess_measurement(msg)
         if len(self.submap_scans) == 0:
-            self.submap_scans.append((0, scan))
+            self.submap_scans.append((0, scan, normals))
             return
+        previous_scan = self.submap_scans[-1][1]
+        previous_normals = self.submap_scans[-1][2]
         factor, initial_estimate = self.create_lidar_factor(
             self.state_index - 1,
             self.state_index,
-            self.submap_scans[-1][1],
+            previous_scan,
             scan,
-            rospy.get_param('/lidar2d/registration')
+            previous_normals
         )
 
         # Request optimized results from the optimizer service.
@@ -172,7 +174,7 @@ class Lidar2DNode:
         received_results = gtsam.Values()
         received_results.deserialize(response.results)
         self.results = received_results
-        self.submap_scans.append((self.state_index, scan))
+        self.submap_scans.append((self.state_index, scan, normals))
         self.state_index += 1
         rospy.loginfo(f"received results for {k1=}, {k2=}")
         self.optimize_submap_callback()
@@ -181,20 +183,20 @@ class Lidar2DNode:
         if len(self.submap_scans) <= 2:
             return
         submap = self.submap_scans.copy()
-        new_index, newest_scan = submap[-1]
+        curr_index, curr_scan, _ = submap[-1]
         for i in range(len(submap)-2):
-            index, scan = submap[i]
+            index, scan, normals = submap[i]
             factor, _ = self.create_lidar_factor(
                 index,
-                new_index,
+                curr_index,
                 scan,
-                newest_scan,
-                rospy.get_param('/lidar2d/registration')
+                curr_scan,
+                normals
             )
 
             # Request optimized results from the optimizer service.
             serialized_factor = factor.serialize()
-            k1, k2 = index, new_index
+            k1, k2 = index, curr_index
             rospy.loginfo(f"requesting results for {k1=}, {k2=}")
             try:
                 response = self.request_optimizer(
@@ -215,7 +217,7 @@ class Lidar2DNode:
         Args:
             scan_pair: A tuple of (state_index, scan)
         """
-        index, bTscan = scan_pair
+        index, bTscan, _ = scan_pair
         # Obtain the pose of the body w.r.t. the world frame.
         wTb = self.results.atPose2(X(index))
         # Transform the scan from the body frame to the world frame.

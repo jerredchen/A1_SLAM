@@ -52,9 +52,9 @@
     # The noise standard deviation of registering two laser scans formatted as [x, y, theta], in m or degrees.
     icp_noise: [5.0e-2, 5.0e-2, 5.0e-3],
 
-    submap_length: 5,
+    submap_length: 4,
 
-    registration: vanilla
+    registration: point-to-line
 
   },
 

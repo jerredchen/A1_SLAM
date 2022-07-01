@@ -34,6 +34,8 @@ class OptimizerNode():
 
     def send_and_clear_results_callback(self, request):
         serialized_str = self.results.serialize()
+        # with open('/home/jerredchen/borglab/A1_SLAM/test_results/new.txt', 'w') as f:
+        #     f.write(serialized_str)
         self.results.clear()
         rospy.logwarn("RESULTS ARE CLEARED")
         return serialized_str
@@ -67,7 +69,7 @@ class OptimizerNode():
 
         key_vec = factor.keys()
         if len(key_vec) > 1:
-            k1, k2 = key_vec[0] % 100 - 20, key_vec[1] % 100 - 20
+            k1, k2 = key_vec[0] % 2**20, key_vec[1] % 2**20
             rospy.loginfo(f"optimizing factor graph for {k1=}, {k2=}")
 
         # Obtain the keys associated with the factor.
@@ -77,11 +79,12 @@ class OptimizerNode():
             self.initial_estimates.insert(key_vector[-1], init_estimate)
 
         prev_results_size = self.results.size()
+        rospy.loginfo(f"{self.initial_estimates=}")
 
         # Perform an iSAM2 incremental update.
         self.isam.update(self.graph, self.initial_estimates)
         self.results = self.isam.calculateEstimate()
-        rospy.loginfo(f"{self.results=}")
+        # rospy.loginfo(f"{self.results=}")
 
         # Publish pose if new pose was added to trajectory.
         if self.results.size() > prev_results_size and (
@@ -90,7 +93,7 @@ class OptimizerNode():
             pose_msg = self.process_pose_message(key_vector[-1])
             self.publish_pose(pose_msg)
 
-        # Clear the graph and initial estimates, and update the state index.
+        # Clear the graph and initial estimates.
         self.graph = gtsam.NonlinearFactorGraph()
         self.initial_estimates.clear()
 
@@ -137,7 +140,7 @@ class OptimizerNode():
         pose_msg.pose.orientation.y = quaternion[2]
         pose_msg.pose.orientation.z = quaternion[3]
         return pose_msg
-    
+
     def publish_pose(self, pose_msg):
         self.pose_publisher.publish(pose_msg)
 
