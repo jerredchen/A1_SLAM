@@ -14,6 +14,7 @@ from gtsam.symbol_shorthand import X
 from registration import icp
 from sensor_msgs import point_cloud2
 from sensor_msgs.msg import LaserScan, PointCloud2
+from sklearn.neighbors import NearestNeighbors
 from std_msgs.msg import Header
 
 
@@ -97,6 +98,15 @@ class Lidar2DNode:
         mask = scan[0] != 0
         scan = scan[:, mask]
 
+        # Perform radius-based outlier removal.
+        knearest = rospy.get_param('/lidar2d/outlier_neighbors')
+        radius = rospy.get_param('/lidar2d/outlier_radius')
+        neighbors = NearestNeighbors(n_neighbors=knearest).fit(scan.T)
+        inds = neighbors.radius_neighbors(radius=radius, return_distance=False)
+        outlier_mask = [len(n) >= knearest for n in inds]
+        scan = scan[:, outlier_mask]
+
+        # Estimate the normal vectors if necessary.
         normals = None
         if rospy.get_param('/lidar2d/registration') == 'point-to-line':
             normals = icp.estimate_normals(scan, k_nearest=5)
@@ -239,10 +249,10 @@ class Lidar2DNode:
         self.submap_scans = deque(
             [], rospy.get_param('/lidar2d/submap_length'))
 
-        # Instantiate service for optimizer
+        # Instantiate service for optimizer.
         rospy.wait_for_service('optimizer_service')
         self.request_optimizer = rospy.ServiceProxy(
-            'optimizer_service', GtsamResults, persistent=True)
+            'optimizer_service', GtsamResults)
 
         # Obtain the poses estimate, in meters and degrees.
         prior_pose_estimate = rospy.get_param('/prior_pose_estimate')
