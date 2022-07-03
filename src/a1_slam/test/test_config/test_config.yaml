@@ -1,9 +1,4 @@
 {
-  # Specify which particular sensors to use.
-  use_imu: false,
-  use_2dlidar: true,
-  use_depth: false,
-
   # Prior initial pose estimates and standard deviations,
   # formatted as [x, y, z, roll, pitch, yaw], in m and degrees.
   prior_pose_estimate: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
@@ -50,11 +45,24 @@
     topic: /slamware_ros_sdk_server_node/scan,
 
     # The noise standard deviation of registering two laser scans formatted as [x, y, theta], in m or degrees.
-    icp_noise: [5.0e-2, 5.0e-2, 5.0e-3],
+    icp_noise: [5.0e-3, 5.0e-3, 5.0e-4],
 
-    submap_length: 5,
+    # The number of scans that should be compared for calculating skip connection.
+    submap_length: 4,
 
-    registration: vanilla
+    # The method used for scan-to-scan registration.
+    registration: point-to-line,
+
+    # The minimum range distance that should be considered from the LIDAR.
+    min_range: 0,
+    # The maximum range distance that should be considered from the LIDAR.
+    max_range: 5,
+
+    # The minimum number of neighborng points within a specified radius to not be considered an outlier.
+    outlier_neighbors: 2,
+    # The radius to be considered for outlier removal, in meters.
+    outlier_radius: 5.0
+
 
   },
 
@@ -65,7 +73,7 @@
   depth: {
 
     # The topic name for the depth camera.
-    topic: /slamware_ros_sdk_server_node/scan
+    topic: /camera/depth/image_rect_raw
 
   }
 }
