@@ -1,4 +1,3 @@
-
 #!/usr/bin/env python
 
 """
@@ -88,8 +87,10 @@ class Lidar2DNode:
         scan = np.zeros((2, len(laser_msg.ranges)), dtype=float)
         # Compute the 2D point where the angle starts at +90 deg, and
         # each range is spaced out in equal increments.
+        min_range = rospy.get_param('/lidar2d/min_range')
+        max_range = rospy.get_param('/lidar2d/max_range')
         for i, distance in enumerate(laser_msg.ranges):
-            if 0 < distance < 5:
+            if min_range < distance < max_range:
                 scan[0][i] = distance * \
                     np.cos(laser_msg.angle_min + i*laser_msg.angle_increment)
                 scan[1][i] = distance * \
@@ -146,7 +147,8 @@ class Lidar2DNode:
             wTb_estimate = self.results.atPose2(X(0))
 
         aTb = icp.icp(scan_a, scan_b, init_aTb, normals)
-        factor = gtsam.BetweenFactorPose2(X(a), X(b), aTb, self.icp_noise_model)
+        factor = gtsam.BetweenFactorPose2(
+            X(a), X(b), aTb, self.icp_noise_model)
         return factor, wTb_estimate
 
     def lidar_callback(self, msg: LaserScan):
@@ -219,7 +221,8 @@ class Lidar2DNode:
                 self.results = received_results
                 rospy.loginfo(f"received results for {k1=}, {k2=}")
             except rospy.service.ServiceException:
-                rospy.logwarn("Service /optimizer_service returned no response")
+                rospy.logwarn(
+                    "Service /optimizer_service returned no response")
         self.publish_transformed_scan(submap[0])
 
     def publish_transformed_scan(self, scan_pair):
