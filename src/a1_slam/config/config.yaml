@@ -53,12 +53,13 @@
     # The method used for scan-to-scan registration.
     registration: point-to-line,
 
+    # The minimum range distance that should be considered from the LIDAR.
+    min_range: 0,
     # The maximum range distance that should be considered from the LIDAR.
     max_range: 5,
 
     # The minimum number of neighborng points within a specified radius to not be considered an outlier.
     outlier_neighbors: 2,
-
     # The radius to be considered for outlier removal, in meters.
     outlier_radius: 0.3
 
