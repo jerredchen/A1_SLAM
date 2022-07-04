@@ -110,7 +110,8 @@ class Lidar2DNode:
         # Estimate the normal vectors if necessary.
         normals = None
         if rospy.get_param('/lidar2d/registration') == 'point-to-line':
-            normals = icp.estimate_normals(scan, k_nearest=5)
+            normal_kneighbors = rospy.get_param('/lidar2d/normal_kneighbors') 
+            normals = icp.estimate_normals(scan, k_nearest=normal_kneighbors)
         return scan, normals
 
     def create_lidar_factor(self,
