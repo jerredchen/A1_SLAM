@@ -22,6 +22,7 @@ add_service_files(
   FILES
   GtsamResults.srv
   FinalResults.srv
+  ClearResults.srv
 )
 
 # Generate added messages and services with any dependencies listed here
@@ -83,7 +84,7 @@ install(
 
 if(CATKIN_ENABLE_TESTING)
   find_package(rostest REQUIRED)
-  add_rostest(test/a1_slam.test)
+  add_rostest(test/test_a1_slam.test)
   catkin_add_nosetests(src/nodes/tests/test_lidar2d.py)
-  # catkin_add_nosetests(src/nodes/tests/test_imu.py)
+  catkin_add_nosetests(src/nodes/tests/test_imu.py)
 endif()
