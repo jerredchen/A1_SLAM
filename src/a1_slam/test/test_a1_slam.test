@@ -1,5 +1,5 @@
 <launch>
-    <arg name="use_imu" default="false"/>
+    <arg name="use_imu" default="true"/>
     <arg name="use_2dlidar" default="true"/>
     <arg name="use_depth" default="false"/>
 

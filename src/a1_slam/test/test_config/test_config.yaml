@@ -62,7 +62,7 @@
     max_range: 5,
 
     # The minimum number of neighboring points within a specified radius to not be considered an outlier.
-    outlier_neighbors: 0,
+    outlier_neighbors: 2,
     # The radius to be considered for outlier removal, in meters.
     outlier_radius: 5.0
 
