@@ -1,4 +1,7 @@
 {
+  # Whether to perform 2D or 3D SLAM. Select 'True' if using 2D LIDAR for estimating odometry.
+  perform_2D_SLAM: true,
+
   # Prior initial pose estimates and standard deviations,
   # formatted as [x, y, z, roll, pitch, yaw], in m and degrees.
   prior_pose_estimate: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
