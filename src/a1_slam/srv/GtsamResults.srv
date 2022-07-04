@@ -1,5 +1,8 @@
 string factor_type
 string factor
 string init_estimate
+int64 estimated_pose_key
+int64 estimated_vel_key
+int64 estimated_bias_key
 ---
 string results
