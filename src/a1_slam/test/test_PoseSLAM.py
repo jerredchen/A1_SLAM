@@ -66,19 +66,12 @@ class TestPoseSLAM(GtsamTestCase):
             msg.pose.orientation.y,
             msg.pose.orientation.z,
         )
-        if rospy.get_param('/use_2dlidar'):
-            pose = gtsam.Pose2(
-                msg.pose.position.x,
-                msg.pose.position.y,
-                rotation.yaw()
-            )
-        else:
-            translation = gtsam.Point3(
-                msg.pose.position.x,
-                msg.pose.position.y,
-                msg.pose.position.z,
-            )
-            pose = gtsam.Pose3(rotation, translation)
+        translation = gtsam.Point3(
+            msg.pose.position.x,
+            msg.pose.position.y,
+            msg.pose.position.z,
+        )
+        pose = gtsam.Pose3(rotation, translation)
         return pose
 
     def poses_callback(self, msg: PoseStamped):
@@ -186,7 +179,7 @@ class TestPoseSLAM(GtsamTestCase):
         # Generate the expected LIDAR poses.
         expected = gtsam.Values()
         for i in range(10):
-            expected.insert(X(i), gtsam.Pose2(0.1*i, 0, 0))
+            expected.insert(X(i), gtsam.Pose3(gtsam.Pose2(0.1*i, 0, 0)))
 
         # Sleep to finish obtaining the trajectory before clearing.
         rospy.sleep(1)
