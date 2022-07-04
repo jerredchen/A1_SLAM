@@ -8,7 +8,7 @@ import rospy
 
 import gtsam
 from unitree_legged_msgs.msg import HighState
-from a1_slam.srv import GtsamResults, FinalResults
+from a1_slam.srv import GtsamResults, FinalResults, ClearResults
 from gtsam.symbol_shorthand import B, V, X
 from geometry_msgs.msg import PoseStamped
 from nav_msgs.msg import Path
@@ -32,65 +32,68 @@ class OptimizerNode():
         self.results = gtsam.Values()
         self.isam = gtsam.ISAM2(gtsam.ISAM2Params())
 
-    def send_and_clear_results_callback(self, request):
+    def send_results_callback(self, request):
         serialized_str = self.results.serialize()
-        # with open('/home/jerredchen/borglab/A1_SLAM/test_results/new.txt', 'w') as f:
-        #     f.write(serialized_str)
-        self.results.clear()
-        rospy.logwarn("RESULTS ARE CLEARED")
         return serialized_str
+
+    def clear_results_callback(self, request):
+        self.results.clear()
+        rospy.logwarn("Results cleared")
+        return self.results.size() == 0
 
     def optimize_graph_callback(self, request):
 
         factor_type = request.factor_type
-        factor, init_estimate = None, None
+        factor = None
+        init_pose_estimate, init_vel_estimate, init_bias_estimate = None, None, None
 
-        if factor_type == "PriorFactorPose2":
-            factor = gtsam.PriorFactorPose2(
-                0, gtsam.Pose2(), gtsam.noiseModel.Isotropic.Sigma(3, 1))
-            init_estimate = gtsam.Pose2()
-        elif factor_type == "BetweenFactorPose2":
-            factor = gtsam.BetweenFactorPose2(
-                0, 0, gtsam.Pose2(), gtsam.noiseModel.Isotropic.Sigma(3, 1))
-            init_estimate = gtsam.Pose2()
-        elif factor_type == "PriorFactorPose3":
+        if factor_type == "PriorFactorPose3":
             factor = gtsam.PriorFactorPose3(
                 0, gtsam.Pose3(), gtsam.noiseModel.Isotropic.Sigma(6, 1))
-            init_estimate = gtsam.Pose2()
+            init_pose_estimate = gtsam.Pose3()
+        elif factor_type == "PriorFactorVector":
+            factor = gtsam.PriorFactorVector(
+                0, np.zeros((3,)), gtsam.noiseModel.Isotropic.Sigma(3, 1))
+            init_pose_estimate = np.zeros((3,))
+        elif factor_type == "PriorFactorConstantBias":
+            factor = gtsam.PriorFactorConstantBias(
+                0, gtsam.imuBias.ConstantBias(), gtsam.noiseModel.Isotropic.Sigma(6, 1))
+            init_bias_estimate = gtsam.imuBias.ConstantBias()
         elif factor_type == "BetweenFactorPose3":
             factor = gtsam.BetweenFactorPose3(
                 0, 0, gtsam.Pose3(), gtsam.noiseModel.Isotropic.Sigma(6, 1))
-            init_estimate = gtsam.Pose3()
+            init_pose_estimate = gtsam.Pose3()
+        elif factor_type == "ImuFactor":
+            initialized_pim = gtsam.PreintegratedImuMeasurements(
+                gtsam.PreintegrationParams.MakeSharedU())
+            factor = gtsam.ImuFactor(0, 0, 0, 0, 0, initialized_pim)
+            init_pose_estimate = gtsam.Pose3()
         else:
             rospy.logerr(
-                "Not currently supported for other than Pose2 or Pose3")
+                "Not a supported type of serialized factor.")
         factor.deserialize(request.factor)
         self.graph.add(factor)
 
-        key_vec = factor.keys()
-        if len(key_vec) > 1:
-            k1, k2 = key_vec[0] % 2**20, key_vec[1] % 2**20
-            rospy.loginfo(f"optimizing factor graph for {k1=}, {k2=}")
-
         # Obtain the keys associated with the factor.
-        key_vector = factor.keys()
-        if len(request.init_estimate) != 0:
-            init_estimate.deserialize(request.init_estimate)
-            self.initial_estimates.insert(key_vector[-1], init_estimate)
-
-        prev_results_size = self.results.size()
-        rospy.loginfo(f"{self.initial_estimates=}")
+        if request.estimated_pose_key != -1:
+            init_pose_estimate.deserialize(request.init_estimate)
+            self.initial_estimates.insert(request.estimated_pose_key, init_pose_estimate)
+        if request.estimated_vel_key != -1:
+            init_vel_estimate = np.array(list(map(float, request.init_estimate.split())))
+            self.initial_estimates.insert(request.estimated_vel_key, init_vel_estimate)
+        if request.estimated_bias_key != -1:
+            init_bias_estimate.deserialize(request.init_estimate)
+            self.initial_estimates.insert(request.estimated_bias_key, init_bias_estimate)
 
         # Perform an iSAM2 incremental update.
         self.isam.update(self.graph, self.initial_estimates)
         self.results = self.isam.calculateEstimate()
-        # rospy.loginfo(f"{self.results=}")
 
         # Publish pose if new pose was added to trajectory.
-        if self.results.size() > prev_results_size and (
-            "Pose2" in factor_type or "Pose3" in factor_type
-        ):
-            pose_msg = self.process_pose_message(key_vector[-1])
+        if request.estimated_pose_key != -1:
+            # pose = self.results.atPose2()
+            # rospy.loginfo(f"")
+            pose_msg = self.process_pose_message(request.estimated_pose_key)
             self.publish_pose(pose_msg)
 
         # Clear the graph and initial estimates.
@@ -99,16 +102,11 @@ class OptimizerNode():
 
         # Serialize the results to return.
         serialized_str = self.results.serialize()
-        if len(key_vec) > 1:
-            rospy.loginfo(f"optimizer sending results for {k1=}, {k2=}")
         return serialized_str
 
     def create_trajectory_callback(self, event=None):
         trajectory = []
-        if rospy.get_param("/use_2dlidar"):
-            poses = gtsam.utilities.allPose2s(self.results)
-        else:
-            poses = gtsam.utilities.allPose3s(self.results)
+        poses = gtsam.utilities.allPose3s(self.results)
         keys = gtsam.KeyVector(poses.keys())
         for key in keys:
             try:
@@ -123,18 +121,11 @@ class OptimizerNode():
         pose_msg = PoseStamped()
         pose_msg.header.stamp = rospy.Time.now()
         pose_msg.header.frame_id = "world"
-        if rospy.get_param('use_2dlidar'):
-            pose_estimate = self.results.atPose2(key)
-            pose_msg.pose.position.x = pose_estimate.x()
-            pose_msg.pose.position.y = pose_estimate.y()
-            quaternion = gtsam.Rot3.Ypr(
-                pose_estimate.theta(), 0, 0).quaternion()
-        else:
-            pose_estimate = self.results.atPose3(key)
-            pose_msg.pose.position.x = pose_estimate.x()
-            pose_msg.pose.position.y = pose_estimate.y()
-            pose_msg.pose.position.y = pose_estimate.z()
-            quaternion = gtsam.rotation().quaternion()
+        pose_estimate = self.results.atPose3(key)
+        pose_msg.pose.position.x = pose_estimate.x()
+        pose_msg.pose.position.y = pose_estimate.y()
+        pose_msg.pose.position.y = pose_estimate.z()
+        quaternion = pose_estimate.rotation().quaternion()
         pose_msg.pose.orientation.w = quaternion[0]
         pose_msg.pose.orientation.x = quaternion[1]
         pose_msg.pose.orientation.y = quaternion[2]
@@ -157,11 +148,15 @@ class OptimizerNode():
         rospy.init_node('optimizer_node', anonymous=True)
 
         # Start the necessary services for optimizing and sending results.
-        rospy.Service('optimizer_service', GtsamResults, self.optimize_graph_callback)
-        rospy.Service('final_results_service',
-                      FinalResults, self.send_and_clear_results_callback)
+        rospy.Service('optimizer_service', GtsamResults,
+                      self.optimize_graph_callback)
+        rospy.Service('final_results_service', FinalResults,
+                      self.send_results_callback)
+        # Clear results service is only used for testing.
+        rospy.Service('clear_results_service', ClearResults,
+                      self.clear_results_callback)
 
-        # Start a thread for publishing the trajectory.
+        # Start a thread for publishing the trajectory._and_clear_
         rospy.Timer(rospy.Duration(0.5), self.create_trajectory_callback)
 
         # Instantiate the iSAM2 parameters to create the iSAM2 object.

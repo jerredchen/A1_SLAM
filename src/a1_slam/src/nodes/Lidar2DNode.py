@@ -31,7 +31,7 @@ class Lidar2DNode:
         self.results = gtsam.Values()
 
         # Instantiate 2D LIDAR related attributes.
-        self.icp_noise_model = gtsam.noiseModel.Diagonal.Sigmas(np.ones((3,)))
+        self.icp_noise_model = gtsam.noiseModel.Diagonal.Sigmas(np.ones((6,)))
         self.submap_scans = []
         self.request_optimizer = None
 
@@ -52,26 +52,33 @@ class Lidar2DNode:
             prior_pose_factor:      The prior factor associated with the initial pose.
             icp_noise_model:        A noise model representing the noise from LIDAR registration.
         """
-        pose = gtsam.Pose2(
+        pose2d = gtsam.Pose2(
             prior_pose_estimate[0],
             prior_pose_estimate[1],
             np.deg2rad(prior_pose_estimate[2])
         )
+        pose = gtsam.Pose3(pose2d)
         prior_noise_model = gtsam.noiseModel.Diagonal.Sigmas(
             np.array([
+                np.deg2rad(prior_pose_sigmas[2]),
+                1e-20,
+                1e-20,
                 prior_pose_sigmas[0],
                 prior_pose_sigmas[1],
-                np.deg2rad(prior_pose_sigmas[2])
+                1e-20
             ])
         )
-        prior_pose_factor = gtsam.PriorFactorPose2(
+        prior_pose_factor = gtsam.PriorFactorPose3(
             X(0), pose, prior_noise_model
         )
         icp_noise_model = gtsam.noiseModel.Diagonal.Sigmas(
             np.array([
+                np.deg2rad(icp_noise_sigmas[2]),
+                1e-20,
+                1e-20,
                 icp_noise_sigmas[0],
                 icp_noise_sigmas[1],
-                np.deg2rad(icp_noise_sigmas[2])
+                1e-20
             ])
         )
         return prior_pose_factor, icp_noise_model
@@ -134,21 +141,28 @@ class Lidar2DNode:
         """
         wTb_estimate = None
         if self.results.exists(X(b)):
-            wTa, wTb = self.results.atPose2(X(a)), self.results.atPose2(X(b))
+            wTa, wTb = self.results.atPose3(X(a)), self.results.atPose3(X(b))
             init_aTb = wTa.between(wTb)
         elif b > 1:
             if X(b-1) != X(a):
                 rospy.logerr(f"KEY A IS NOT AS EXPECTED")
-            wTp, wTq = self.results.atPose2(
-                X(b-2)), self.results.atPose2(X(b-1))
+            wTp, wTq = self.results.atPose3(
+                X(b-2)), self.results.atPose3(X(b-1))
             init_aTb = wTp.between(wTq)
             wTb_estimate = wTq.compose(init_aTb)
         else:
-            init_aTb = gtsam.Pose2()
-            wTb_estimate = self.results.atPose2(X(0))
-
-        aTb = icp.icp(scan_a, scan_b, init_aTb, normals)
-        factor = gtsam.BetweenFactorPose2(
+            init_aTb = gtsam.Pose3()
+            wTb_estimate = self.results.atPose3(X(0))
+        # Convert into a Pose2 object for 2D ICP registration.
+        init_aTb = gtsam.Pose2(
+            init_aTb.x(),
+            init_aTb.y(),
+            init_aTb.rotation().yaw()
+        )
+        aTb_2D = icp.icp(scan_a, scan_b, init_aTb, normals)
+        # Convert back into Pose3 object.
+        aTb = gtsam.Pose3(aTb_2D)
+        factor = gtsam.BetweenFactorPose3(
             X(a), X(b), aTb, self.icp_noise_model)
         return factor, wTb_estimate
 
@@ -180,9 +194,12 @@ class Lidar2DNode:
         k1, k2 = self.state_index - 1, self.state_index
         rospy.loginfo(f"requesting results for {k1=}, {k2=}")
         response = self.request_optimizer(
-            "BetweenFactorPose2",
+            "BetweenFactorPose3",
             serialized_factor,
-            serialized_estimate
+            serialized_estimate,
+            X(self.state_index),
+            -1,
+            -1
         )
         received_results = gtsam.Values()
         received_results.deserialize(response.results)
@@ -213,9 +230,12 @@ class Lidar2DNode:
             rospy.loginfo(f"requesting results for {k1=}, {k2=}")
             try:
                 response = self.request_optimizer(
-                    "BetweenFactorPose2",
+                    "BetweenFactorPose3",
                     serialized_factor,
-                    ""
+                    "",
+                    -1,
+                    -1,
+                    -1
                 )
                 received_results = gtsam.Values()
                 received_results.deserialize(response.results)
@@ -233,12 +253,11 @@ class Lidar2DNode:
         """
         index, bTscan, _ = scan_pair
         # Obtain the pose of the body w.r.t. the world frame.
-        wTb = self.results.atPose2(X(index))
+        wTb = self.results.atPose3(X(index))
         # Transform the scan from the body frame to the world frame.
-        wTscan = wTb.transformFrom(bTscan[:2])
+        wTscan = wTb.transformFrom(np.vstack((bTscan, np.zeros((1, bTscan.shape[1])))))
 
         # Reformat scan to be argument for creating point cloud.
-        wTscan = np.vstack((wTscan, np.zeros((1, wTscan.shape[1]))))
         wTscan = wTscan.T
         header = Header()
         header.stamp = rospy.Time.now()
@@ -275,9 +294,12 @@ class Lidar2DNode:
         serialized_factor = prior_pose_factor.serialize()
         serialized_estimate = prior_pose_factor.prior().serialize()
         response = self.request_optimizer(
-            "PriorFactorPose2",
+            "PriorFactorPose3",
             serialized_factor,
-            serialized_estimate
+            serialized_estimate,
+            X(self.state_index),
+            -1,
+            -1
         )
         received_results = gtsam.Values()
         received_results.deserialize(response.results)
