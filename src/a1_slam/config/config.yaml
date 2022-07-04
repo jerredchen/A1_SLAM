@@ -10,10 +10,14 @@
 
   imu: {
 
-    # The topic name for HighState message.
+    # Whether to use the Unitree custom state message to extract the IMU.
+    use_custom_unitree: true,
+
+    # The topic name for obtaining IMU measurements.
     topic: /HighState,
 
     # The number of measurements that the IMU should preintegrate before adding an IMU factor.
+    # Used if IMU is the only sensor selected.
     imu_factor_rate: 50,
 
     # Prior initial velocity estimates and standard deviations, formatted as [x, y, z], in m/s.
@@ -44,24 +48,27 @@
     # The topic name for the 2D LiDAR.
     topic: /slamware_ros_sdk_server_node/scan,
 
-    # The noise standard deviation of registering two laser scans formatted as [x, y, theta], in m or degrees.
+    # The noise standard deviation of registering two laser scans formatted as [x, y, theta], in m and degrees.
     icp_noise: [5.0e-3, 5.0e-3, 5.0e-4],
 
-    # The number of scans that should be compared for calculating skip connection.
+    # The number of scans that should be compared for calculating skip connections.
     submap_length: 4,
 
     # The method used for scan-to-scan registration.
     registration: point-to-line,
+
+    # If using point-to-line registration, the number of k-nearest neighbors to consider for normal estimation.
+    normal_kneighbors: 2,
 
     # The minimum range distance that should be considered from the LIDAR.
     min_range: 0,
     # The maximum range distance that should be considered from the LIDAR.
     max_range: 5,
 
-    # The minimum number of neighborng points within a specified radius to not be considered an outlier.
+    # The minimum number of neighboring points within a specified radius to not be considered an outlier.
     outlier_neighbors: 2,
     # The radius to be considered for outlier removal, in meters.
-    outlier_radius: 0.3
+    outlier_radius: 0.5
 
 
   },
