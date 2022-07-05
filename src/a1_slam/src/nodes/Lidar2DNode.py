@@ -7,7 +7,7 @@ import rospy
 
 import gtsam
 import numpy as np
-from a1_slam.srv import GtsamResults
+from a1_slam.srv import AddFactor, GetResults
 from collections import deque
 from gtsam.symbol_shorthand import X
 from registration import icp
@@ -21,10 +21,12 @@ class Lidar2DNode:
 
     def __init__(self):
 
-        # Instantiate publisher attributes.
+        # Instantiate publisher and service attributes.
         self.scan_publisher = rospy.Publisher(
             "/transformed_clouds", PointCloud2, queue_size=5
         )
+        self.request_optimizer = None
+        self.request_results = None
 
         # Instantiate factor graph and optimizer attributes.
         self.state_index = 0
@@ -33,7 +35,6 @@ class Lidar2DNode:
         # Instantiate 2D LIDAR related attributes.
         self.icp_noise_model = gtsam.noiseModel.Diagonal.Sigmas(np.ones((6,)))
         self.submap_scans = []
-        self.request_optimizer = None
 
     def parse_config_parameters(self,
                                 prior_pose_estimate,
@@ -275,7 +276,10 @@ class Lidar2DNode:
         # Instantiate service for optimizer.
         rospy.wait_for_service('optimizer_service')
         self.request_optimizer = rospy.ServiceProxy(
-            'optimizer_service', GtsamResults)
+            'optimizer_service', AddFactor)
+        rospy.wait_for_service('get_results_service')
+        self.request_results = rospy.ServiceProxy(
+            'get_results_service', GetResults)
 
         # Obtain the poses estimate, in meters and degrees.
         prior_pose_estimate = rospy.get_param('/prior_pose_estimate')
@@ -290,17 +294,8 @@ class Lidar2DNode:
         prior_pose_factor, self.icp_noise_model = self.parse_config_parameters(
             prior_pose_estimate, prior_pose_sigmas, icp_noise_sigmas)
 
-        # Request results from adding prior to the factor graph.
-        serialized_factor = prior_pose_factor.serialize()
-        serialized_estimate = prior_pose_factor.prior().serialize()
-        response = self.request_optimizer(
-            "PriorFactorPose3",
-            serialized_factor,
-            serialized_estimate,
-            X(self.state_index),
-            -1,
-            -1
-        )
+        # Request results with an added prior pose to the factor graph.
+        response = self.request_results()
         received_results = gtsam.Values()
         received_results.deserialize(response.results)
         self.results = received_results

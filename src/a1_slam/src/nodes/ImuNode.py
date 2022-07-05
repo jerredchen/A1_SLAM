@@ -7,7 +7,7 @@ import rospy
 
 import gtsam
 import numpy as np
-from a1_slam.srv import GtsamResults, ImuEstimate
+from a1_slam.srv import AddFactor, GetResults, ImuEstimate
 from gtsam.symbol_shorthand import B, V, X
 from unitree_legged_msgs.msg import HighState
 
@@ -15,14 +15,19 @@ from unitree_legged_msgs.msg import HighState
 class ImuNode():
 
     def __init__(self):
-        self.request_optimizer = None
 
+        # Instantiate service attributes.
+        self.request_optimizer = None
+        self.request_results = None
+
+        # Instantiate factor graph and optimizer attributes.
+        self.state_index = 0
         self.results = gtsam.Values()
 
+        # Instantiate IMU related attributes.
         self.timestamp = 0
         self.seen_measurements = 0
         self.pim = None
-        self.state_index = 0
 
     def parse_config_parameters(self,
                                 prior_pose_estimate,
@@ -133,11 +138,16 @@ class ImuNode():
         factor_rate = rospy.get_param('/imu/imu_factor_rate')
         if (not use_2dlidar and not use_depth and \
             self.seen_measurements == factor_rate):
+                current_navstate = gtsam.NavState(
+                    self.results.atPose3(X(self.state_index - 1)),
+                    self.results.atVector(V(self.state_index - 1)),
+                )
                 imu_factor, predicted_navstate = self.add_IMU_factor(
                     self.state_index - 1,
-                    self.state_index
+                    self.state_index,
+                    current_navstate
                 )
-                serialized_factor = imu_factor.serialize()
+                serialized_factor = imu_factor.preintegratedMeasurements().serialize()
                 serialized_estimate = predicted_navstate.serialize()
                 response = self.request_optimizer(
                     "ImuFactor",
@@ -207,7 +217,7 @@ class ImuNode():
             j,
             current_navstate
         )
-        serialized_factor = imu_factor.serialize()
+        serialized_factor = imu_factor.preintegratedMeasurements().serialize()
         serialized_estimate = predicted_navstate.serialize()
         response = self.request_optimizer(
             "ImuFactor",
@@ -230,7 +240,11 @@ class ImuNode():
         # Instantiate service for optimizer.
         rospy.wait_for_service('optimizer_service')
         self.request_optimizer = rospy.ServiceProxy(
-            'optimizer_service', GtsamResults)
+            'optimizer_service', AddFactor)
+        rospy.wait_for_service('get_results_service')
+        self.request_results = rospy.ServiceProxy(
+            'get_results_service', GetResults
+        )
 
         # Start the necessary services for sending predicted NavStates.
         rospy.Service('initial_estimate_service', ImuEstimate,
@@ -286,14 +300,6 @@ class ImuNode():
         serialized_vel_estimate = f"{velocity[0]} {velocity[1]} {velocity[2]}"
         serialized_prior_bias = prior_bias_factor.serialize()
         serialized_bias_estimate = prior_bias_factor.prior().serialize()
-        response = self.request_optimizer(
-            "PriorFactorPose3",
-            serialized_prior_pose,
-            serialized_pose_estimate,
-            X(self.state_index),
-            -1,
-            -1
-        )
         response = self.request_optimizer(
             "PriorFactorVector",
             serialized_prior_vel,
