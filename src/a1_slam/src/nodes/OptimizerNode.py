@@ -2,17 +2,42 @@
 
 """
 Node which optimizes the factor graph using iSAM2.
+Current design:
+- Separate service to accept a specific sensor. For each service,
+    the optimized results are returned to the respective sensor.
+- Each sensor is its own separate process node. This allows for:
+    - easy testing. Test cases only depend on launching a specific node.
+        - Even if they weren't separate nodes, would that still work?
+            The original issue was that you could not figure out how to
+            test the nodes individually. However, currently all nodes are
+            to be launched and only specific streams of data are published.
+    - each sensor now runs on a separate process and can perform processing
+        simultaneously instead of each sensor running on a separate thread
+        in the same process.
+Possible redesigns for optimizer node:
+- Each node publishes a factor and optimizer has several subscribers.
+    This could be used if there is not a need to immediately receive
+    the results publishing the factor.
+    - The results would then be obtain through a continuous publisher.
+- There is a shared queue (with proper mutexes) between nodes where
+    the factors are added to the queue and the optimizer pops the factors
+    from the added queue continuously. The optimizer continuously optimizes
+    factors from the queue and the results are then updated. Results are also
+    accessed from a shared location of memory.
+- There is only one node which is the a1_slam node, and the node consists of
+    multiple subscribers to the sensor topics.
+
 """
+import gtsam
 import numpy as np
 import rospy
-
-import gtsam
-from unitree_legged_msgs.msg import HighState
+from a1_slam.msg import (BetweenFactorPose3, ImuFactor,
+                         PriorFactorConstantBias, PriorFactorPose3,
+                         PriorFactorVector)
 from a1_slam.srv import AddFactor, ClearResults, GetResults
-from gtsam.symbol_shorthand import B, V, X
 from geometry_msgs.msg import PoseStamped
+from gtsam.symbol_shorthand import B, V, X
 from nav_msgs.msg import Path
-from sensor_msgs.msg import LaserScan, PointCloud2
 
 
 class OptimizerNode():
@@ -31,6 +56,8 @@ class OptimizerNode():
         self.initial_estimates = gtsam.Values()
         self.results = gtsam.Values()
         self.isam = gtsam.ISAM2(gtsam.ISAM2Params())
+
+    ############ Parsing parameters ############
 
     def create_prior_pose_factor(self,
                                  prior_pose_estimate,
@@ -54,6 +81,8 @@ class OptimizerNode():
             X(0), prior_pose_estimate, prior_pose_noise)
         return prior_pose_factor
 
+    ############ Service callbacks ############
+
     def send_results_callback(self, request):
         serialized_str = self.results.serialize()
         return serialized_str
@@ -64,74 +93,94 @@ class OptimizerNode():
         rospy.logwarn("Results cleared")
         return serialized_str
 
-    def optimize_graph_callback(self, request):
+    def BetweenFactorPose3_callback(self, request):
+        pose_trans = np.array(request.xyz)
+        pose_rot = gtsam.Rot3.Ypr(*(request.rpy[::-1]))
+        relative_pose = gtsam.Pose3(pose_rot, pose_trans)
+        noise_model = gtsam.noiseModel.Diagonal.Sigmas(
+            np.array(request.sigmas))
+        factor = gtsam.BetweenFactorPose3(
+            request.key_i,
+            request.key_j,
+            relative_pose,
+            noise_model
+        )
 
-        factor_type = request.factor_type
-        factor = None
-        init_pose_estimate, init_vel_estimate, init_bias_estimate = None, None, None
+    def ImuFactor_callback(self, request):
+        bias = gtsam.imuBias.ConstantBias(
+            np.array(request.accel_bias),
+            np.array(request.gyro_bias)
+        )
+        pim_params = gtsam.PreintegrationParams.MakeSharedU()
+        pim = gtsam.PreintegratedImuMeasurements(pim_params)
+        pim.deserialize(request.serialized_pim)
+        factor = gtsam.ImuFactor(
+            request.pose_key_i,
+            request.vel_key_i,
+            request.pose_key_j,
+            request.vel_key_j,
+            request.bias_key,
+            bias,
+            pim
+        )
 
-        if factor_type == "PriorFactorPose3":
-            factor = gtsam.PriorFactorPose3(
-                0, gtsam.Pose3(), gtsam.noiseModel.Isotropic.Sigma(6, 1))
-            factor.deserialize(request.factor)
-            init_pose_estimate = gtsam.Pose3()
-            requested_pose = request.init_estimate
-        elif factor_type == "PriorFactorVector":
-            factor = gtsam.PriorFactorVector(
-                0, np.zeros((3,)), gtsam.noiseModel.Isotropic.Sigma(3, 1))
-            factor.deserialize(request.factor)
-            requested_vel = request.init_estimate
-        elif factor_type == "PriorFactorConstantBias":
-            factor = gtsam.PriorFactorConstantBias(
-                0, gtsam.imuBias.ConstantBias(), gtsam.noiseModel.Isotropic.Sigma(6, 1))
-            factor.deserialize(request.factor)
-            init_bias_estimate = gtsam.imuBias.ConstantBias()
-            requested_bias = request.init_estimate
-        elif factor_type == "BetweenFactorPose3":
-            factor = gtsam.BetweenFactorPose3(
-                0, 0, gtsam.Pose3(), gtsam.noiseModel.Isotropic.Sigma(6, 1))
-            factor.deserialize(request.factor)
-            init_pose_estimate = gtsam.Pose3()
-            requested_pose = request.init_estimate
-        elif factor_type == "ImuFactor":
-            pim = gtsam.PreintegratedImuMeasurements(
-                gtsam.PreintegrationParams.MakeSharedU())
-            pim.deserialize(request.factor)
-            ind = request.estimated_pose_key % (2**20)
-            factor = gtsam.ImuFactor(X(ind-1), V(ind-1), X(ind), V(ind), B(0), pim)
-            init_pose_estimate = gtsam.Pose3()
-            deserialized_navstate = gtsam.NavState()
-            deserialized_navstate.deserialize(request.init_estimate)
-            requested_pose = request.init_estimate
-        else:
-            rospy.logerr(
-                "Not a supported type of serialized factor.")
+    def PriorFactorConstantBias_callback(self, request):
+        bias = gtsam.imuBias.ConstantBias(
+            np.array(request.accel_bias),
+            np.array(request.gyro_bias)
+        )
+        noise_model = gtsam.noiseModel.Diagonal.Sigmas(
+            np.array(request.sigmas))
+        factor = gtsam.PriorFactorConstantBias(
+            request.key,
+            bias,
+            noise_model
+        )
+
+    def PriorFactorPose3_callback(self, request):
+        pose_trans = np.array(request.xyz)
+        pose_rot = gtsam.Rot3.Ypr(*(request.rpy[::-1]))
+        pose = gtsam.Pose3(pose_rot, pose_trans)
+        noise_model = gtsam.noiseModel.Diagonal.Sigmas(
+            np.array(request.sigmas))
+        factor = gtsam.PriorFactorConstantBias(
+            request.key,
+            pose,
+            noise_model
+        )
+
+    def PriorFactorVector_callback(self, request):
+        noise_model = gtsam.noiseModel.Diagonal.Sigmas(
+            np.array(request.sigmas))
+        factor = gtsam.PriorFactorConstantBias(
+            request.key,
+            np.array(request.vector),
+            noise_model
+        )
+
+    def optimize_graph(self, factor, initial_estimates):
+        """Optimize the factor graph using iSAM2.
+        Args:
+            factor: The factor to be added to the factor graph.
+            initial_estimates: A list of tuples in the format of
+                                (key, initial_estimate).
+        """
+        new_pose_key = -1
         self.graph.add(factor)
-
-        # Obtain the keys associated with the factor.
-        if request.estimated_pose_key != -1:
-            init_pose_estimate.deserialize(request.init_estimate)
-            self.initial_estimates.insert(
-                request.estimated_pose_key, init_pose_estimate)
-        if request.estimated_vel_key != -1:
-            init_vel_estimate = np.array(
-                list(map(float, request.init_estimate.split())))
-            self.initial_estimates.insert(
-                request.estimated_vel_key, init_vel_estimate)
-        if request.estimated_bias_key != -1:
-            init_bias_estimate.deserialize(request.init_estimate)
-            self.initial_estimates.insert(
-                request.estimated_bias_key, init_bias_estimate)
+        for key, estimate in initial_estimates:
+            if not self.results.exists(key):
+                self.initial_estimates.insert(key, estimate)
+                new_pose_key = key if type(estimate) == gtsam.Pose3 else -1
 
         # Perform an iSAM2 incremental update.
         self.isam.update(self.graph, self.initial_estimates)
         self.results = self.isam.calculateEstimate()
 
         # Publish pose if new pose was added to trajectory.
-        if request.estimated_pose_key != -1:
+        if new_pose_key != -1:
             # pose = self.results.atPose2()
             # rospy.loginfo(f"")
-            pose_msg = self.process_pose_message(request.estimated_pose_key)
+            pose_msg = self.process_pose_message(self.results.atPose3(new_pose_key))
             self.publish_pose(pose_msg)
 
         # Clear the graph and initial estimates.
@@ -153,6 +202,8 @@ class OptimizerNode():
             except:
                 rospy.logwarn("Could not access key in results")
         self.publish_traj(trajectory)
+
+    ############ Processing messages and publisher functions ############
 
     def process_pose_message(self, key):
         """Publish a PoseStamped message of the most recent pose."""
@@ -180,6 +231,8 @@ class OptimizerNode():
         path_msg.header.frame_id = "world"
         path_msg.poses = trajectory
         self.traj_publisher.publish(path_msg)
+
+    ############ Launch main optimizer node ############
 
     def launch_optimizer_node(self):
         """Initialize and start the optimizer node."""
@@ -211,14 +264,39 @@ class OptimizerNode():
         self.graph = gtsam.NonlinearFactorGraph()
         self.initial_estimates.clear()
 
-        # Start the necessary services for optimizing and sending results.
-        rospy.Service('optimizer_service', AddFactor,
-                      self.optimize_graph_callback)
+        # Start the necessary services for sending results.
         rospy.Service('get_results_service', GetResults,
                       self.send_results_callback)
         # Clear results service is only used for testing purposes.
         rospy.Service('clear_results_service', ClearResults,
                       self.clear_results_callback)
+
+        # Start the necessary services for each factor.
+        rospy.Service(
+            'BetweenFactorPose3_service',
+            BetweenFactorPose3,
+            self.BetweenFactorPose3_callback
+        )
+        rospy.Service(
+            'ImuFactor_service',
+            ImuFactor,
+            self.ImuFactor_callback
+        )
+        rospy.Service(
+            'PriorFactorConstantBias_service',
+            PriorFactorConstantBias,
+            self.PriorFactorConstantBias_callback
+        )
+        rospy.Service(
+            'PriorFactorPose3_service',
+            PriorFactorPose3,
+            self.PriorFactorPose3_callback
+        )
+        rospy.Service(
+            'PriorFactorVector_service',
+            PriorFactorVector,
+            self.PriorFactorVector_callback
+        )
 
         rospy.spin()
 

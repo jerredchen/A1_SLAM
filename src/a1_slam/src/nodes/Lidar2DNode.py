@@ -37,52 +37,26 @@ class Lidar2DNode:
         self.submap_scans = []
 
     def parse_config_parameters(self,
-                                prior_pose_estimate,
-                                prior_pose_sigmas,
                                 icp_noise_sigmas):
         """Parse the config parameters to be used as gtsam objects.
 
         Args:
-            prior_pose_estimate:    A list in format [x, y, theta]
-                                        representing the initial estimate on the prior pose.
-            prior_pose_sigmas:      A list in format [x, y, theta] representing the prior
-                                        pose noise's translational and rotational standard deviation.
             icp_noise_sigmas:       A list in format [x, y, theta] representing the noise
                                         standard deviations associated with a LIDAR odometry factor.
         Returns:
-            prior_pose_factor:      The prior factor associated with the initial pose.
             icp_noise_model:        A noise model representing the noise from LIDAR registration.
         """
-        pose2d = gtsam.Pose2(
-            prior_pose_estimate[0],
-            prior_pose_estimate[1],
-            np.deg2rad(prior_pose_estimate[2])
-        )
-        pose = gtsam.Pose3(pose2d)
-        prior_noise_model = gtsam.noiseModel.Diagonal.Sigmas(
-            np.array([
-                np.deg2rad(prior_pose_sigmas[2]),
-                1e-20,
-                1e-20,
-                prior_pose_sigmas[0],
-                prior_pose_sigmas[1],
-                1e-20
-            ])
-        )
-        prior_pose_factor = gtsam.PriorFactorPose3(
-            X(0), pose, prior_noise_model
-        )
         icp_noise_model = gtsam.noiseModel.Diagonal.Sigmas(
             np.array([
-                np.deg2rad(icp_noise_sigmas[2]),
                 1e-20,
                 1e-20,
+                np.deg2rad(icp_noise_sigmas[5]),
                 icp_noise_sigmas[0],
                 icp_noise_sigmas[1],
                 1e-20
             ])
         )
-        return prior_pose_factor, icp_noise_model
+        return icp_noise_model
 
     def preprocess_measurement(self, laser_msg: LaserScan):
         """Extracts ranges from the LaserScan message and converts into
@@ -281,18 +255,11 @@ class Lidar2DNode:
         self.request_results = rospy.ServiceProxy(
             'get_results_service', GetResults)
 
-        # Obtain the poses estimate, in meters and degrees.
-        prior_pose_estimate = rospy.get_param('/prior_pose_estimate')
-
-        # Obtain the pose's translational and rotational standard deviations, in meters and degrees.
-        prior_pose_sigmas = rospy.get_param('/prior_pose_sigmas')
-
         # Obtain the standard deviation associated with registration noise, in meters and degrees.
         icp_noise_sigmas = rospy.get_param('/lidar2d/icp_noise')
 
         # Parse the config parameters to be GTSAM appropriate objects.
-        prior_pose_factor, self.icp_noise_model = self.parse_config_parameters(
-            prior_pose_estimate, prior_pose_sigmas, icp_noise_sigmas)
+        self.icp_noise_model = self.parse_config_parameters(icp_noise_sigmas)
 
         # Request results with an added prior pose to the factor graph.
         response = self.request_results()
