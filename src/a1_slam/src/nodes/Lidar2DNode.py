@@ -7,7 +7,7 @@ import rospy
 
 import gtsam
 import numpy as np
-from a1_slam.srv import AddFactor, GetResults
+from a1_slam.srv import GetResults
 from collections import deque
 from gtsam.symbol_shorthand import X
 from registration import icp
@@ -17,7 +17,7 @@ from sklearn.neighbors import NearestNeighbors
 from std_msgs.msg import Header
 
 
-class Lidar2DNode:
+class Lidar2D:
 
     def __init__(self):
 
@@ -274,11 +274,3 @@ class Lidar2DNode:
         # rospy.Timer(rospy.Duration(0.1), self.optimize_submap_callback)
 
         rospy.spin()
-
-
-if __name__ == "__main__":
-    try:
-        lidar_node = Lidar2DNode()
-        lidar_node.launch_lidar_node()
-    except rospy.ROSInterruptException:
-        pass

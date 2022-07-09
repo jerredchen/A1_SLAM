@@ -12,7 +12,7 @@ from nav_msgs.msg import Path
 from sensor_msgs.msg import LaserScan, PointCloud2
 
 
-class TestPoseSLAM(GtsamTestCase):
+class TestA1Slam(GtsamTestCase):
     def setUp(self):
         rospy.init_node('test_node', anonymous=True)
         rospy.loginfo("Initialized test_node")
@@ -267,4 +267,4 @@ class TestPoseSLAM(GtsamTestCase):
 
 if __name__ == '__main__':
     import rostest
-    rostest.run('a1_slam', 'pose_slam_test', TestPoseSLAM)
+    rostest.run('a1_slam', 'pose_slam_test', TestA1Slam)

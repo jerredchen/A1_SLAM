@@ -31,9 +31,6 @@ Possible redesigns for optimizer node:
 import gtsam
 import numpy as np
 import rospy
-from a1_slam.msg import (BetweenFactorPose3, ImuFactor,
-                         PriorFactorConstantBias, PriorFactorPose3,
-                         PriorFactorVector)
 from a1_slam.srv import AddFactor, ClearResults, GetResults
 from geometry_msgs.msg import PoseStamped
 from gtsam.symbol_shorthand import B, V, X
@@ -264,39 +261,6 @@ class OptimizerNode():
         self.graph = gtsam.NonlinearFactorGraph()
         self.initial_estimates.clear()
 
-        # Start the necessary services for sending results.
-        rospy.Service('get_results_service', GetResults,
-                      self.send_results_callback)
-        # Clear results service is only used for testing purposes.
-        rospy.Service('clear_results_service', ClearResults,
-                      self.clear_results_callback)
-
-        # Start the necessary services for each factor.
-        rospy.Service(
-            'BetweenFactorPose3_service',
-            BetweenFactorPose3,
-            self.BetweenFactorPose3_callback
-        )
-        rospy.Service(
-            'ImuFactor_service',
-            ImuFactor,
-            self.ImuFactor_callback
-        )
-        rospy.Service(
-            'PriorFactorConstantBias_service',
-            PriorFactorConstantBias,
-            self.PriorFactorConstantBias_callback
-        )
-        rospy.Service(
-            'PriorFactorPose3_service',
-            PriorFactorPose3,
-            self.PriorFactorPose3_callback
-        )
-        rospy.Service(
-            'PriorFactorVector_service',
-            PriorFactorVector,
-            self.PriorFactorVector_callback
-        )
 
         rospy.spin()
 

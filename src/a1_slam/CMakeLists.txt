@@ -20,10 +20,8 @@ catkin_python_setup()
 # Generate services in the 'srv' folder
 add_service_files(
   FILES
-  AddFactor.srv
   GetResults.srv
   ClearResults.srv
-  ImuEstimate.srv
 )
 
 # Generate added messages and services with any dependencies listed here
@@ -67,10 +65,10 @@ include_directories(
 ## Mark executable scripts (Python etc.) for installation
 ## in contrast to setup.py, you can choose the destination
 catkin_install_python(PROGRAMS
-  test_publish.py
-  src/nodes/ImuNode.py
-  src/nodes/Lidar2DNode.py
-  src/nodes/OptimizerNode.py
+  src/nodes/A1SlamNode.py
+  src/test.py
+  src/test_import.py
+  src/registration/Optimizer.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
