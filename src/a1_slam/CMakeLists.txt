@@ -21,7 +21,6 @@ catkin_python_setup()
 add_service_files(
   FILES
   GetResults.srv
-  ClearResults.srv
 )
 
 # Generate added messages and services with any dependencies listed here
@@ -66,9 +65,6 @@ include_directories(
 ## in contrast to setup.py, you can choose the destination
 catkin_install_python(PROGRAMS
   src/nodes/A1SlamNode.py
-  src/test.py
-  src/test_import.py
-  src/registration/Optimizer.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
@@ -86,6 +82,6 @@ install(
 if(CATKIN_ENABLE_TESTING)
   find_package(rostest REQUIRED)
   add_rostest(test/test_a1_slam.test)
-  catkin_add_nosetests(src/nodes/tests/test_lidar2d.py)
-  catkin_add_nosetests(src/nodes/tests/test_imu.py)
+  # catkin_add_nosetests(src/nodes/tests/test_lidar2d.py)
+  # catkin_add_nosetests(src/nodes/tests/test_imu.py)
 endif()
