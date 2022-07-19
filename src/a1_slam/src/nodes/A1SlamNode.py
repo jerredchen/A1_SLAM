@@ -1,90 +1,71 @@
 #!/usr/bin/env python
 
-import gtsam
-import numpy as np
-from nodes.Lidar2DNode import Lidar2D
 import rospy
-import threading
-from a1_slam.srv import GetResults, ClearResults
-from collections import deque
-from geometry_msgs.msg import PoseStamped
-from gtsam.symbol_shorthand import B, V, X
-from nav_msgs.msg import Path
-from threading import Lock
+from a1_slam.srv import GetResults
+from sensor_msgs.msg import Imu, LaserScan
+from unitree_legged_msgs.msg import HighState
 
+from optimization.optimizer import Optimizer
+from sensors.imu import ImuWrapper
+from sensors.lidar2D import Lidar2DWrapper
 class A1SlamNode():
-
-    # Subscriber callbacks
-
-    def lidar_callback(self, msg):
-        """
-        Trying to isolate functions for better package structure
-        (as opposed to having all functions shoved into a single file).
-        Pros:
-            - better readibility
-            - better structure of package
-            - more modular
-        Difficulties:
-            - can you have a callback in a separate module?
-                - you need a way to place the factor in the queue
-                - one way to circumvent is have queue as attribute of object,
-                    accept the object as arg for callback
-                    e.g. lidar_callback(self, msg, optimizer) where
-                    optimizer.queue is an attribute
-                    - how do have optimizer callbacks work (continuously optimize)?
-                        - 
-        """
-        factor = Lidar2D.create_lidar_factor()
-        self.factor_queue.appendleft(factor)
-    
-    def imu_callback(self, msg):
-        pass
 
     def launch_node(self):
         """Initialize and start the A1 SLAM node."""
         rospy.init_node('a1_slam_node', anonymous=True)
 
-        # Create a prior pose factor and add to the factor graph.
-        prior_pose_factor = self.create_prior_pose_factor(
-            rospy.get_param('/prior_pose_estimate'),
-            rospy.get_param('/prior_pose_sigmas')
-        )
-        self.graph.add(prior_pose_factor)
-        self.init_estimates.insert(
-            X(0),
-            prior_pose_factor.prior()
-        )
+        # Check which sensors are selected to be used for SLAM.
+        use_imu = rospy.get_param('/use_imu')
+        use_2dlidar = rospy.get_param('/use_2dlidar')
+        use_depth = rospy.get_param('/use_depth')
+        assert any([use_imu, use_2dlidar, use_depth]), "No sensors were selected."
 
-        # Perform an iSAM2 incremental update.
-        self.isam.update(self.graph, self.initial_estimates)
-        self.results = self.isam.calculateEstimate()
+        # Create the optimizer with prior factors to add to the factor graph
+        optimizer = Optimizer()
+        optimizer.add_prior_factors()
 
-        # Clear the graph and initial estimates.
-        self.graph = gtsam.NonlinearFactorGraph()
-        self.init_estimates.clear()
+        # Create an Imu wrapper class that subscribes to imu.
+        imu = None
+        if use_imu:
+            imu = ImuWrapper(optimizer)
+            imu.initialize_params()
+            imu_topic = rospy.get_param('/imu/topic')
+            imu_only = not use_2dlidar and not use_depth
+            if rospy.get_param('/imu/use_custom_unitree'):
+                rospy.Subscriber(
+                    imu_topic, HighState, imu.imu_unitree_callback, callback_args=imu_only)
+            else:
+                rospy.Subscriber(
+                    imu_topic, Imu, imu.imu_ros_callback, callback_args=imu_only)
 
-        # Create a Lidar2D wrapper that subscribes to laser scans.
-        sub = rospy.Subscriber()
+        # Create a Lidar2D wrapper class that subscribes to laser scans.
+        if use_2dlidar:
+            lidar = Lidar2DWrapper(optimizer)
+            lidar.initialize_params()
+            lidar_topic = rospy.get_param('/lidar2d/topic')
+            rospy.Subscriber(
+                lidar_topic,
+                LaserScan,
+                lidar.lidar_callback, 
+                callback_args=imu
+            )
 
-        # Create an Imu wrapper that subscribes to imu.
-
-        # Create an optimizer that pops from the queues and optimizes the factor graph.
-        rospy.Timer(0.1, )
+        optimizer.optimize()
 
         # Create a pose publisher that publishes the pose from the results.
-        rospy.Timer(0.5, )
+        rospy.Timer(rospy.Duration(0.1), optimizer.pose_callback)
 
         # Create a trajectory publisher that publishes the trajectory of results.
-        rospy.Timer(1.0, )
+        rospy.Timer(rospy.Duration(1.0), optimizer.trajectory_callback)
 
         # Start the necessary services for sending results.
         rospy.Service('get_results_service', GetResults,
-                      self.send_results_callback)
-        # Clear results service is only used for testing purposes.
-        rospy.Service('clear_results_service', ClearResults,
-                      self.clear_results_callback)
-
+                      optimizer.send_results)
+        # Reset results service is only used for testing purposes.
+        rospy.Service('reset_results_service', GetResults,
+                      optimizer.reset_results)
         rospy.spin()
+
 
 if __name__ == "__main__":
     try:
