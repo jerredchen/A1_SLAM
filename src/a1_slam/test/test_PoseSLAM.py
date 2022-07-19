@@ -4,7 +4,7 @@ import gtsam
 import numpy as np
 import rospy
 from unitree_legged_msgs.msg import HighState
-from a1_slam.srv import ClearResults
+from a1_slam.srv import GetResults
 from gtsam.symbol_shorthand import B, V, X
 from gtsam.utils.test_case import GtsamTestCase
 from geometry_msgs.msg import PoseStamped
@@ -23,12 +23,15 @@ class TestA1Slam(GtsamTestCase):
         self.imu_pub = rospy.Publisher(imu_topic, HighState)
         self.lidar2d_pub = rospy.Publisher(lidar2d_topic, LaserScan)
 
-        # Instantiate relevant subscribers, attributes, and service to test results.
+        # Instantiate relevant subscribers, services, and attributes to test results.
         rospy.Subscriber('/pose_estimate', PoseStamped, self.poses_callback)
         rospy.Subscriber('/traj_estimate', Path, self.traj_callback)
-        rospy.wait_for_service('clear_results_service')
-        self.clear_results = rospy.ServiceProxy(
-            'clear_results_service', ClearResults)
+        rospy.wait_for_service('get_results_service')
+        self.send_results = rospy.ServiceProxy(
+            'get_results_service', GetResults)
+        rospy.wait_for_service('reset_results_service')
+        self.reset_results = rospy.ServiceProxy(
+            'reset_results_service', GetResults)
         self.poses = gtsam.Values()
         self.traj = gtsam.Values()
 
@@ -39,15 +42,15 @@ class TestA1Slam(GtsamTestCase):
         )
         # Sleep to allow for subscribers to connect to the created topics.
         rospy.sleep(1)
-    
+
     ############ Publisher/subscriber relevant functions ############
 
     def publish_msgs(self, publisher, msgs, rate):
         """Publish toy data for testing.
         Args:
-            publisher: a rospy.Publisher object to publish.
-            msgs: A generator of messages to be published.
-            rate: The rate to publish the messages, in Hz.
+            publisher:  A rospy.Publisher object to publish.
+            msgs:       A generator of messages to be published.
+            rate:       The rate to publish the messages, in Hz.
         """
         ros_rate = rospy.Rate(rate)
         for msg in msgs:
@@ -140,7 +143,7 @@ class TestA1Slam(GtsamTestCase):
             ranges = ((1.0 - 0.1*i) * self.ranges_original).tolist()
             scan.ranges = ranges
             yield scan
-    
+
     def generate_lidar_imu_data(self):
         """Generate LIDAR and IMU measurements when moving."""
         for i in range(500):
@@ -161,59 +164,65 @@ class TestA1Slam(GtsamTestCase):
 
     ####################### Integration tests #######################
 
-    def test_stationary_imu_poses(self):
-        rospy.set_param('/use_imu', True)
-        rospy.set_param('/use_2dlidar', False)
-        self.publish_msgs(self.imu_pub, self.generate_no_acceleration_imu_data(), 100)
+    # def test_stationary_imu_poses(self):
+    #     rospy.set_param('/use_imu', True)
+    #     rospy.set_param('/use_2dlidar', False)
+    #     self.reset_results()
 
-        # Generate the expected pose, velocity, and bias values.
-        expected = gtsam.Values()
-        for i in range(5):
-            expected.insert(X(i), gtsam.Pose3())
-            expected.insert(V(i), gtsam.Point3(0, 0, 0))
-        expected.insert(B(0), gtsam.imuBias.ConstantBias())
+    #     self.publish_msgs(self.imu_pub, self.generate_no_acceleration_imu_data(), 100)
 
-        # Sleep to finish obtaining the trajectory before clearing.
-        rospy.sleep(1)
+    #     # Generate the expected pose, velocity, and bias values.
+    #     expected = gtsam.Values()
+    #     for i in range(5):
+    #         expected.insert(X(i), gtsam.Pose3())
+    #         expected.insert(V(i), gtsam.Point3(0, 0, 0))
+    #     expected.insert(B(0), gtsam.imuBias.ConstantBias())
 
-        # Obtain the actual pose, velocity, and bias values.
-        response = self.clear_results()
-        actual = gtsam.Values()
-        actual.deserialize(response.results)
+    #     # Sleep to finish obtaining the trajectory before clearing.
+    #     rospy.sleep(1)
 
-        self.gtsamAssertEquals(actual, expected)
-        self.gtsamAssertEquals(self.poses, expected, 1e-2)
-        self.gtsamAssertEquals(self.traj, expected, 1e-2)
+    #     # Obtain the actual pose, velocity, and bias values.
+    #     response = self.send_results()
+    #     actual = gtsam.Values()
+    #     actual.deserialize(response.results)
 
-    def test_acceleration_imu_poses(self):
-        rospy.set_param('/use_imu', True)
-        rospy.set_param('/use_2dlidar', False)
-        self.publish_msgs(self.imu_pub, self.generate_acceleration_imu_data(), 100)
+    #     self.gtsamAssertEquals(actual, expected)
+    #     self.gtsamAssertEquals(self.poses, expected, 1e-2)
+    #     self.gtsamAssertEquals(self.traj, expected, 1e-2)
 
-        # Generate the expected pose, velocity, and bias values.
-        expected = gtsam.Values()
-        for i in range(5):
-            expected.insert(X(i), gtsam.Pose3(gtsam.Rot3(), gtsam.Point3(0.5*(i**2), 0.0, 0.0)))
-            expected.insert(V(i), gtsam.Point3(i, 0, 0))
-        expected.insert(B(0), gtsam.imuBias.ConstantBias())
+    # def test_acceleration_imu_poses(self):
+    #     rospy.set_param('/use_imu', True)
+    #     rospy.set_param('/use_2dlidar', False)
+    #     self.reset_results()
 
-        # Sleep to finish obtaining the trajectory before clearing.
-        rospy.sleep(1)
+    #     self.publish_msgs(self.imu_pub, self.generate_acceleration_imu_data(), 100)
 
-        # Obtain the actual pose, velocity, and bias values.
-        response = self.clear_results()
-        actual = gtsam.Values()
-        actual.deserialize(response.results)
+    #     # Generate the expected pose, velocity, and bias values.
+    #     expected = gtsam.Values()
+    #     for i in range(5):
+    #         expected.insert(X(i), gtsam.Pose3(gtsam.Rot3(), gtsam.Point3(0.5*(i**2), 0.0, 0.0)))
+    #         expected.insert(V(i), gtsam.Point3(i, 0, 0))
+    #     expected.insert(B(0), gtsam.imuBias.ConstantBias())
 
-        self.gtsamAssertEquals(actual, expected, 1e-3)
-        self.gtsamAssertEquals(self.poses, expected, 1e-3)
-        self.gtsamAssertEquals(self.traj, expected, 1e-3)
-        self.poses.clear()
-        self.traj.clear()
+    #     # Sleep to finish obtaining the trajectory before clearing.
+    #     rospy.sleep(1)
+
+    #     # Obtain the actual pose, velocity, and bias values.
+    #     response = self.send_results()
+    #     actual = gtsam.Values()
+    #     actual.deserialize(response.results)
+
+    #     self.gtsamAssertEquals(actual, expected, 1e-3)
+    #     self.gtsamAssertEquals(self.poses, expected, 1e-3)
+    #     self.gtsamAssertEquals(self.traj, expected, 1e-3)
+    #     self.poses.clear()
+    #     self.traj.clear()
 
     def test_lidar_poses(self):
         rospy.set_param('/use_imu', False)
         rospy.set_param('/use_2dlidar', True)
+        self.reset_results()
+
         self.publish_msgs(
             self.lidar2d_pub, self.generate_lidar_data(), 10)
 
@@ -226,7 +235,7 @@ class TestA1Slam(GtsamTestCase):
         rospy.sleep(1)
 
         # Obtain the actual poses.
-        response = self.clear_results()
+        response = self.send_results()
         actual = gtsam.Values()
         actual.deserialize(response.results)
 
@@ -235,34 +244,32 @@ class TestA1Slam(GtsamTestCase):
         self.gtsamAssertEquals(self.traj, expected, 1e-2)
         self.poses.clear()
         self.traj.clear()
-    
-    def test_lidar_with_imu(self):
-        rospy.set_param('/use_imu', True)
-        rospy.set_param('/use_2dlidar', True)
-        self.publish_multi_msgs(
-            [self.imu_pub, self.lidar2d_pub],
-            self.generate_lidar_imu_data(),
-            [500, 10]
-        )
 
-        # Generate the expected LIDAR poses.
-        expected = gtsam.Values()
-        for i in range(10):
-            expected.insert(X(i), gtsam.Pose3(gtsam.Pose2(0.1*i, 0, 0)))
+    # def test_lidar_with_imu(self):
+    #     self.publish_multi_msgs(
+    #         [self.imu_pub, self.lidar2d_pub],
+    #         self.generate_lidar_imu_data(),
+    #         [500, 10]
+    #     )
 
-        # Sleep to finish obtaining the trajectory before clearing.
-        rospy.sleep(1)
+    #     # Generate the expected LIDAR poses.
+    #     expected = gtsam.Values()
+    #     for i in range(10):
+    #         expected.insert(X(i), gtsam.Pose3(gtsam.Pose2(0.1*i, 0, 0)))
 
-        # Obtain the actual poses.
-        response = self.clear_results()
-        actual = gtsam.Values()
-        actual.deserialize(response.results)
+    #     # Sleep to finish obtaining the trajectory before clearing.
+    #     rospy.sleep(1)
 
-        self.gtsamAssertEquals(actual, expected, 1e-2)
-        self.gtsamAssertEquals(self.poses, expected, 1e-2)
-        self.gtsamAssertEquals(self.traj, expected, 1e-2)
-        self.poses.clear()
-        self.traj.clear()
+    #     # Obtain the actual poses.
+    #     response = self.clear_results()
+    #     actual = gtsam.Values()
+    #     actual.deserialize(response.results)
+
+    #     self.gtsamAssertEquals(actual, expected, 1e-2)
+    #     self.gtsamAssertEquals(self.poses, expected, 1e-2)
+    #     self.gtsamAssertEquals(self.traj, expected, 1e-2)
+    #     self.poses.clear()
+    #     self.traj.clear()
 
 
 if __name__ == '__main__':

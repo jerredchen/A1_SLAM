@@ -13,6 +13,9 @@
 
   imu: {
 
+    # Whether to use the Unitree custom state message to extract the IMU.
+    use_custom_unitree: true,
+
     # The topic name for HighState message.
     topic: /HighState,
 
@@ -52,11 +55,11 @@
     # The number of scans that should be compared for calculating skip connections.
     submap_length: 4,
 
-    # The method used for scan-to-scan registration.
-    registration: point-to-line,
+    # The maximum threshold distance for forming correspondences during ICP.
+    correspondence_threshold: 2.0,
 
     # If using point-to-line registration, the number of k-nearest neighbors to consider for normal estimation.
-    normal_kneighbors: 3,
+    normal_kneighbors: 2,
 
     # The minimum range distance that should be considered from the LIDAR.
     min_range: 0,
