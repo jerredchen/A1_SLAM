@@ -7,6 +7,9 @@
     <arg name="use_depth" default="false"/>
     <param name="use_depth" value="$(arg use_depth)"/>
 
+    <!--Testing parameter is only set for integration tests.-->
+    <param name="testing" value="false"/>
+
     <!--Arguments for obtaining and visualizing SLAM results.-->
     <arg name="launch_rviz" default="true"/>
     <arg name="record_rosbag" default="false"/>

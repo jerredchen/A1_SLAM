@@ -131,8 +131,12 @@ class Optimizer:
         """Publish poses from the poses queue."""
         while len(self.poses_queue):
             key = self.poses_queue.popleft()
-            pose_msg = self.process_pose_message(key)
-            self.pose_publisher.publish(pose_msg)
+            if rospy.get_param('/publish_covariance'):
+                pose_cov_msg = self.process_pose_cov_message(key)
+                self.pose_cov_publisher.publish(pose_cov_msg)
+            else:
+                pose_msg = self.process_pose_message(key)
+                self.pose_publisher.publish(pose_msg)
 
     def trajectory_callback(self, event=None):
         """Publish the current optimized trajectory."""
@@ -156,7 +160,7 @@ class Optimizer:
     def reset_results(self, request):
         """Send a serialized string of the results, reset
         the results and add the necessary prior factors.
-        Used for testing purposes.
+        Used for ROS integration testing.
         """
         serialized_str = self.results.serialize()
         self.results.clear()
