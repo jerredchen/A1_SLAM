@@ -7,6 +7,9 @@
   prior_pose_estimate: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
   prior_pose_sigmas: [1.0e-8, 1.0e-8, 1.0e-8, 1.0e-9, 1.0e-9, 1.0e-9],
 
+  # Whether to publish poses with pose covariances.
+  publish_covariance: false,
+
   #########################################################################################
   ##################################         IMU         ##################################
   #########################################################################################
@@ -20,6 +23,7 @@
     topic: /HighState,
 
     # The number of measurements that the IMU should preintegrate before adding an IMU factor.
+    # Used if IMU is the only sensor selected.
     imu_factor_rate: 100,
 
     # Prior initial velocity estimates and standard deviations, formatted as [x, y, z], in m/s.
@@ -29,14 +33,14 @@
     # Prior initial biases and standard devations, formatted as [accel_x, accel_y, accel_z, gyro_x, gyro_y, gyro_z],
     # in m/s^2 and rad/s for the accelerometer and gyroscope respectively.
     prior_bias_estimate: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-    prior_bias_sigmas: [1.0e-3, 1.0e-3, 1.0e-3, 1.0e-5, 1.0e-5, 1.0e-5],
+    prior_bias_sigmas: [1.0e-4, 1.0e-4, 1.0e-4, 1.0e-4, 1.0e-4, 1.0e-4],
 
     # The sensor noise standard deviation of the accelerometer formatted as [x, y, z], in m/s^2/sqrt(Hz).
-    accel_sigmas: [1.0e-2, 1.0e-2, 1.0e-2],
+    accel_sigmas: [1.0e-4, 1.0e-4, 1.0e-4],
     # The sensor noise standard deviation of the gyroscope formatted as [x, y, z], in rad/s/sqrt(Hz).
-    gyro_sigmas: [1.0e-3, 1.0e-3, 1.0e-3],
+    gyro_sigmas: [1.0e-5, 1.0e-5, 1.0e-5],
     # The uncertainty standard deviation during integration formatted as [x, y, z].
-    integration_sigmas: [1.0e-5, 1.0e-5, 1.0e-5]
+    integration_sigmas: [1.0e-6, 1.0e-6, 1.0e-6]
 
   },
 
@@ -56,10 +60,7 @@
     submap_length: 4,
 
     # The maximum threshold distance for forming correspondences during ICP.
-    correspondence_threshold: 2.0,
-
-    # If using point-to-line registration, the number of k-nearest neighbors to consider for normal estimation.
-    normal_kneighbors: 2,
+    correspondence_threshold: 5.0,
 
     # The minimum range distance that should be considered from the LIDAR.
     min_range: 0,

@@ -7,7 +7,7 @@ from sensors.imu import ImuWrapper
 from unitree_legged_msgs.msg import HighState
 
 
-class TestImuNode(GtsamTestCase):
+class TestImu(GtsamTestCase):
 
     def setUp(self):
         self.optimizer = Optimizer()
@@ -112,4 +112,4 @@ class TestImuNode(GtsamTestCase):
 
 if __name__ == '__main__':
     import rosunit
-    rosunit.unitrun('a1_slam', 'test_imu', TestImuNode)
+    rosunit.unitrun('a1_slam', 'test_imu', TestImu)

@@ -101,23 +101,21 @@ class Lidar2DWrapper:
                 wTb = self.optimizer.results.atPose3(X(b))
                 aTb_estimate = wTa.between(wTb)
             elif a == 0 and b == 1:
-                aTb_estimate = gtsam.Pose3(gtsam.Pose2(0.05, 0.05, 0))
+                aTb_estimate = gtsam.Pose3()
             else:
-                if X(b-1) != X(a):
-                    print(f"{a}, {b}")
                 wTp = self.optimizer.results.atPose3(X(a-1))
                 wTq = self.optimizer.results.atPose3(X(b-1))
                 aTb_estimate = wTp.between(wTq)
 
-        # Use multithreaded ICP to calculate the rigid body transform.
-        source = np.vstack((scan_b, np.ones(scan_b.shape[1]))).T
-        target = np.vstack((scan_a, np.ones(scan_a.shape[1]))).T
+        # Use multithreaded GICP to calculate the rigid body transform.
+        source = np.vstack((scan_b, np.ones(scan_b.shape[1])))
+        target = np.vstack((scan_a, np.ones(scan_a.shape[1])))
         aTb_matrix = pygicp.align_points(
-            target,
-            source,
+            target.T,
+            source.T,
             max_correspondence_distance=self.correspondence_threshold,
             initial_guess=aTb_estimate.matrix(),
-            k_correspondences=3,
+            k_correspondences=5,
             num_threads=2
         )
 
@@ -143,6 +141,12 @@ class Lidar2DWrapper:
             imu: if not None, an Imu object to use as an initial estimate for ICP.
         """
 
+        # Calculate the aTb initial estimate from IMU if available.
+        aTb_estimate = None
+        index_a, index_b = self.state_index - 1, self.state_index
+        if imu and len(self.submap_scans) > 0:
+            aTb_estimate = imu.create_and_add_factor(index_a, index_b)
+
         # Obtain the minimum and maximum ranges to use preprocessing.
         min_range = rospy.get_param('/lidar2d/min_range')
         max_range = rospy.get_param('/lidar2d/max_range')
@@ -159,12 +163,6 @@ class Lidar2DWrapper:
             self.submap_scans.append(scan_b)
             return
         scan_a = self.submap_scans[-1]
-        aTb_estimate = None
-
-        # Calculate the aTb initial estimate from IMU if available.
-        index_a, index_b = self.state_index - 1, self.state_index
-        if imu:
-            aTb_estimate = imu.get_aTb_estimate(index_a, index_b)
 
         # Create the LIDAR factor, add to the optimizer, and optimize.
         factor, wTb_estimate = self.create_lidar_factor(
@@ -266,12 +264,12 @@ class Lidar2DWrapper:
         icp_noise_sigmas = rospy.get_param('/lidar2d/icp_noise')
         self.icp_noise_model = gtsam.noiseModel.Diagonal.Sigmas(
             np.array([
-                1e-20,
-                1e-20,
+                1e-10,
+                1e-10,
                 np.deg2rad(icp_noise_sigmas[2]),
                 icp_noise_sigmas[0],
                 icp_noise_sigmas[1],
-                1e-20
+                1e-10
             ])
         )
 

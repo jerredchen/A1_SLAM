@@ -7,6 +7,7 @@ import rospy
 
 import gtsam
 import numpy as np
+from a1_slam.srv import GetResults
 from gtsam.symbol_shorthand import B, V, X
 from optimization.optimizer import Optimizer
 from sensor_msgs.msg import Imu
@@ -36,7 +37,6 @@ class ImuWrapper():
         """
         if self.timestamp == 0:
             self.timestamp = msg.header.stamp.to_sec()
-            self.seen_measurements += 1
             return
         current_timestamp = msg.header.stamp.to_sec()
         self.preintegrate_measurement(msg, current_timestamp - self.timestamp)
@@ -44,28 +44,7 @@ class ImuWrapper():
         self.seen_measurements += 1
         factor_rate = rospy.get_param('/imu/imu_factor_rate')
         if imu_only and self.seen_measurements == factor_rate:
-            # Calculate the NavState based on the optimized results.
-            pose = self.optimizer.results.atPose3(X(self.state_index))
-            velocity = self.optimizer.results.atVector(V(self.state_index))
-            navstate = gtsam.NavState(pose, velocity)
-
-            # Create an IMU factor and the initial estimates.
-            imu_factor, _, predicted_navstate = self.create_IMU_factor(
-                navstate)
-            pose_estimate = (
-                X(self.state_index + 1),
-                predicted_navstate.pose()
-            )
-            vel_estimate = (
-                V(self.state_index + 1),
-                predicted_navstate.velocity()
-            )
-
-            # Add the factor and initial estimates to the optimizer.
-            self.optimizer.add_factor(imu_factor, [pose_estimate, vel_estimate])
-            self.optimizer.optimize()
-            self.state_index += 1
-            self.seen_measurements = 0
+            self.create_and_add_factor(self.state_index - 1, self.state_index)
 
     def imu_ros_callback(self, msg: Imu, imu_only=False):
         """Perform IMU preintegration whenever receiving an IMU
@@ -84,33 +63,12 @@ class ImuWrapper():
         self.seen_measurements += 1
         factor_rate = rospy.get_param('/imu/imu_factor_rate')
         if imu_only and self.seen_measurements == factor_rate:
-            # Calculate the NavState based on the optimized results.
-            pose = self.optimizer.results.atPose3(X(self.state_index))
-            velocity = self.optimizer.results.atVector(V(self.state_index))
-            navstate = gtsam.NavState(pose, velocity)
-
-            # Create an IMU factor and the initial estimates.
-            imu_factor, _, predicted_navstate = self.create_IMU_factor(
-                navstate)
-            pose_estimate = (
-                X(self.state_index + 1),
-                predicted_navstate.pose()
-            )
-            vel_estimate = (
-                V(self.state_index + 1),
-                predicted_navstate.velocity()
-            )
-
-            # Add the factor and initial estimates to the optimizer.
-            self.optimizer.add_factor(imu_factor, [pose_estimate, vel_estimate])
-            self.optimizer.optimize()
-            self.state_index += 1
-            self.seen_measurements = 0
+            self.create_and_add_factor(self.state_index - 1, self.state_index)
 
     ###################### Callable functions ######################
-
-    def get_aTb_estimate(self, a, b):
-        """Estimate aTb from IMU which is used as an initial estimate for ICP.
+    
+    def create_and_add_factor(self, a, b):
+        """Estimate aTb from IMU and add a corresponding IMU factor to the graph.
         Args:
             a:          The state index associated with the previous time step.
             b:          The state index associated with the current time step.
@@ -131,6 +89,8 @@ class ImuWrapper():
         # Add the factor and initial estimates to the optimizer.
         self.optimizer.add_factor(factor, [pose_estimate, vel_estimate])
         self.optimizer.optimize()
+        self.state_index += 1
+        self.seen_measurements = 0
         return aTb
 
     ###################### Helper functions ######################
@@ -185,7 +145,7 @@ class ImuWrapper():
 
         return imu_factor, aTb, predicted_navstate
 
-    ###################### Initialization and preprocessing ######################
+    ###################### Initialization and testing ######################
 
     def initialize_params(self):
         """Initialize Imu parameters based on the set rosparams."""
@@ -217,3 +177,11 @@ class ImuWrapper():
         pim_parameters.setIntegrationCovariance(integration_noise_cov)
         self.pim = gtsam.PreintegratedImuMeasurements(
             pim_parameters, prior_bias_estimate)
+
+    def reset(self, request):
+        """Reset the IMU attributes. Used for integration tests."""
+        self.state_index = 1
+        self.timestamp = 0
+        self.seen_measurements = 0
+        rospy.loginfo("IMU attributes reset")
+        return ""

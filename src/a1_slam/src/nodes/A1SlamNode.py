@@ -8,6 +8,8 @@ from unitree_legged_msgs.msg import HighState
 from optimization.optimizer import Optimizer
 from sensors.imu import ImuWrapper
 from sensors.lidar2D import Lidar2DWrapper
+
+
 class A1SlamNode():
 
     def launch_node(self):
@@ -18,7 +20,9 @@ class A1SlamNode():
         use_imu = rospy.get_param('/use_imu')
         use_2dlidar = rospy.get_param('/use_2dlidar')
         use_depth = rospy.get_param('/use_depth')
-        assert any([use_imu, use_2dlidar, use_depth]), "No sensors were selected."
+        check_sensors = [use_imu, use_2dlidar, use_depth]
+        if not any(check_sensors):
+            rospy.logerr("No sensors were selected.")
 
         # Create the optimizer with prior factors to add to the factor graph
         optimizer = Optimizer()
@@ -46,7 +50,7 @@ class A1SlamNode():
             rospy.Subscriber(
                 lidar_topic,
                 LaserScan,
-                lidar.lidar_callback, 
+                lidar.lidar_callback,
                 callback_args=imu
             )
 
@@ -58,12 +62,17 @@ class A1SlamNode():
         # Create a trajectory publisher that publishes the trajectory of results.
         rospy.Timer(rospy.Duration(1.0), optimizer.trajectory_callback)
 
-        # Start the necessary services for sending results.
+        # Start the necessary service for sending results.
         rospy.Service('get_results_service', GetResults,
                       optimizer.send_results)
-        # Reset results service is only used for testing purposes.
-        rospy.Service('reset_results_service', GetResults,
-                      optimizer.reset_results)
+
+        # Start services that are only used for ros integration testing.
+        if rospy.get_param('/testing'):
+            rospy.Service('reset_results_service', GetResults,
+                        optimizer.reset_results)
+            if use_imu:
+                rospy.Service('reset_imu_service', GetResults,
+                            imu.reset)
         rospy.spin()
 
 

@@ -1,7 +1,10 @@
 <launch>
-    <arg name="use_imu" default="false"/>
-    <arg name="use_2dlidar" default="true"/>
+    <arg name="use_imu" default="true"/>
+    <arg name="use_2dlidar" default="false"/>
     <arg name="use_depth" default="false"/>
+
+    <!--Testing parameter is only set for integration tests.-->
+    <param name="testing" value="true"/>
 
     <param name="use_imu" value="$(arg use_imu)"/>
     <param name="use_2dlidar" value="$(arg use_2dlidar)"/>
@@ -10,5 +13,5 @@
     <rosparam file="$(find a1_slam)/test/test_config/test_config.yaml" />
     <node pkg="a1_slam" type="A1SlamNode.py" name="a1_slam_node" output="screen"/>
 
-    <test pkg="a1_slam" type="test_PoseSLAM.py" test-name="slam_ros_integration"/>
+    <test pkg="a1_slam" type="test_integration_imu.py" test-name="imu_ros_integration"/>
 </launch>

@@ -28,9 +28,8 @@ class TestICP(GtsamTestCase):
         aTb_3D = pygicp.align_points(
             expected.transformFrom(self.triangle).T,
             self.triangle.T,
-            method="GICP",
             max_correspondence_distance=0.5,
-            k_correspondences=3,
+            k_correspondences=15,
             num_threads=4
         )
         actual = gtsam.Pose3(aTb_3D)
@@ -43,9 +42,8 @@ class TestICP(GtsamTestCase):
         aTb_3D = pygicp.align_points(
             expected.transformFrom(self.triangle).T,
             self.triangle.T,
-            method="GICP",
             max_correspondence_distance=0.5,
-            k_correspondences=3,
+            k_correspondences=15,
             num_threads=4
         )
         actual = gtsam.Pose3(aTb_3D)

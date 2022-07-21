@@ -81,7 +81,9 @@ install(
 
 if(CATKIN_ENABLE_TESTING)
   find_package(rostest REQUIRED)
-  add_rostest(test/test_a1_slam.test)
-  # catkin_add_nosetests(src/nodes/tests/test_lidar2d.py)
-  # catkin_add_nosetests(src/nodes/tests/test_imu.py)
+  add_rostest(test/test_integration_lidar2d.test)
+  add_rostest(test/test_integration_imu.test)
+  add_rostest(test/test_integration_lidar2d_imu.test)
+  catkin_add_nosetests(test/test_sensor_lidar2d.py)
+  catkin_add_nosetests(test/test_sensor_imu.py)
 endif()
