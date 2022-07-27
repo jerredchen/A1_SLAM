@@ -7,6 +7,9 @@
   prior_pose_estimate: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
   prior_pose_sigmas: [1.0e-8, 1.0e-8, 1.0e-8, 1.0e-9, 1.0e-9, 1.0e-9],
 
+  # Whether to publish poses with pose covariances.
+  publish_covariance: false,
+
   #########################################################################################
   ##################################         IMU         ##################################
   #########################################################################################
@@ -29,18 +32,22 @@
 
     # Prior initial biases and standard devations, formatted as [accel_x, accel_y, accel_z, gyro_x, gyro_y, gyro_z],
     # in m/s^2 and rad/s for the accelerometer and gyroscope respectively.
-    prior_bias_estimate: [-0.105882, 0.0914219, -0.239811, 0.000204728, -0.000155793, -0.000395044],
+    # prior_bias_estimate: [-0.05325, 0.075894, -0.235, -8.238e-5, 3.3202e-6, -0.000224], # for 03-05-07-01
+    prior_bias_estimate: [-0.05325, 0.075894, 0, -8.238e-5, 3.3202e-6, -0.000224], # for 03-05-07-01
     prior_bias_sigmas: [1.0e-3, 1.0e-3, 1.0e-3, 1.0e-5, 1.0e-5, 1.0e-5],
 
     # The sensor noise standard deviation of the accelerometer formatted as [x, y, z], in m/s^2/sqrt(Hz).
-    accel_sigmas: [0.001333, 0.000767, 0.001400],
+    # accel_sigmas: [0.005171, 0.00334, 0.00660],
+    accel_sigmas: [0.06381, 0.09469, 0.17038],
     # The sensor noise standard deviation of the gyroscope formatted as [x, y, z], in rad/s/sqrt(Hz).
-    gyro_sigmas: [0.0110, 0.0167, 0.0090],
+    gyro_sigmas: [0.000482, 0.000385, 0.000409],
+    # gyro_sigmas: [0.00671, 0.00727, 0.00421],
     # The uncertainty standard deviation during integration formatted as [x, y, z].
     integration_sigmas: [1.0e-5, 1.0e-5, 1.0e-5]
+    # integration_sigmas: [1.0e-4, 1.0e-4, 1.0e-4]
 
   },
-
+ 
   #########################################################################################
   ##################################       LiDAR         ##################################
   #########################################################################################
@@ -51,26 +58,23 @@
     topic: /slamware_ros_sdk_server_node/scan,
 
     # The noise standard deviation of registering two laser scans formatted as [x, y, theta], in m and degrees.
-    icp_noise: [5.0e-3, 5.0e-3, 5.0e-4],
+    icp_noise: [1.0e-2, 1.0e-2, 1.0e-3],
 
     # The number of scans that should be compared for calculating skip connections.
-    submap_length: 4,
+    submap_length: 10,
 
-    # The method used for scan-to-scan registration.
-    registration: point-to-line,
-
-    # If using point-to-line registration, the number of k-nearest neighbors to consider for normal estimation.
-    normal_kneighbors: 2,
+    # The maximum threshold distance for forming correspondences during ICP.
+    correspondence_threshold: 0.5,
 
     # The minimum range distance that should be considered from the LIDAR.
-    min_range: 0,
+    min_range: 1.5,
     # The maximum range distance that should be considered from the LIDAR.
     max_range: 5,
 
     # The minimum number of neighboring points within a specified radius to not be considered an outlier.
     outlier_neighbors: 2,
     # The radius to be considered for outlier removal, in meters.
-    outlier_radius: 0.5
+    outlier_radius: 5.0
 
 
   },

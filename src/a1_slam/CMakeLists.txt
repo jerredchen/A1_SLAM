@@ -20,10 +20,7 @@ catkin_python_setup()
 # Generate services in the 'srv' folder
 add_service_files(
   FILES
-  AddFactor.srv
   GetResults.srv
-  ClearResults.srv
-  ImuEstimate.srv
 )
 
 # Generate added messages and services with any dependencies listed here
@@ -67,10 +64,7 @@ include_directories(
 ## Mark executable scripts (Python etc.) for installation
 ## in contrast to setup.py, you can choose the destination
 catkin_install_python(PROGRAMS
-  test_publish.py
-  src/nodes/ImuNode.py
-  src/nodes/Lidar2DNode.py
-  src/nodes/OptimizerNode.py
+  src/nodes/A1SlamNode.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
@@ -87,7 +81,9 @@ install(
 
 if(CATKIN_ENABLE_TESTING)
   find_package(rostest REQUIRED)
-  add_rostest(test/test_a1_slam.test)
-  catkin_add_nosetests(src/nodes/tests/test_lidar2d.py)
-  catkin_add_nosetests(src/nodes/tests/test_imu.py)
+  add_rostest(test/test_integration_lidar2d.test)
+  add_rostest(test/test_integration_imu.test)
+  add_rostest(test/test_integration_lidar2d_imu.test)
+  catkin_add_nosetests(test/test_sensor_lidar2d.py)
+  catkin_add_nosetests(test/test_sensor_imu.py)
 endif()

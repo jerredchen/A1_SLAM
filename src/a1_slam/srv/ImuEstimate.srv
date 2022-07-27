@@ -1,4 +1,0 @@
-int64 current_index
-int64 predicted_index
----
-string estimate
