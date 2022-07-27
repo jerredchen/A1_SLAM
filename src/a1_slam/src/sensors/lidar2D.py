@@ -6,6 +6,7 @@ Class for processing 2D LIDAR scans.
 
 from collections import deque
 from threading import Lock
+import time
 
 import gtsam
 import numpy as np
@@ -18,6 +19,7 @@ from sklearn.neighbors import NearestNeighbors
 from std_msgs.msg import Header
 
 from optimization.optimizer import Optimizer
+from registration.icp_line import icp
 
 
 class Lidar2DWrapper:
@@ -53,7 +55,6 @@ class Lidar2DWrapper:
         scan = np.zeros((2, len(laser_msg.ranges)), dtype=float)
         # Compute the 2D point where the angle starts at +90 deg, and
         # each range is spaced out in equal increments.
-
         for i, distance in enumerate(laser_msg.ranges):
             if min_range < distance < max_range:
                 scan[0][i] = distance * \
@@ -95,17 +96,25 @@ class Lidar2DWrapper:
         """
 
         # Calculate the ICP initial estimate if not given.
+
+        # print("*"*20)
+        # print(f"imu estimate: {aTb_estimate}")
         if not aTb_estimate:
+        # if aTb_estimate:
+            # print("aTb_estimate is NONE")
             if self.optimizer.results.exists(X(b)):
                 wTa = self.optimizer.results.atPose3(X(a))
                 wTb = self.optimizer.results.atPose3(X(b))
                 aTb_estimate = wTa.between(wTb)
+                # print(f"constant vel estimate: {wTa.between(wTb)}")
             elif a == 0 and b == 1:
                 aTb_estimate = gtsam.Pose3()
+                # print(f"constant vel estimate: {gtsam.Pose3()}")
             else:
                 wTp = self.optimizer.results.atPose3(X(a-1))
                 wTq = self.optimizer.results.atPose3(X(b-1))
                 aTb_estimate = wTp.between(wTq)
+                # print(f"constant vel estimate: {wTp.between(wTq)}")
 
         # Use multithreaded GICP to calculate the rigid body transform.
         source = np.vstack((scan_b, np.ones(scan_b.shape[1])))
@@ -115,7 +124,7 @@ class Lidar2DWrapper:
             source.T,
             max_correspondence_distance=self.correspondence_threshold,
             initial_guess=aTb_estimate.matrix(),
-            k_correspondences=5,
+            k_correspondences=15,
             num_threads=2
         )
 
@@ -123,6 +132,8 @@ class Lidar2DWrapper:
         aTb = gtsam.Pose3(aTb_matrix)
         rotation = aTb.rotation().Ypr(aTb.rotation().yaw(), 0, 0)
         aTb = gtsam.Pose3(rotation, np.array([aTb.x(), aTb.y(), 0.0]))
+        # print("-"*10)
+        # print(f"icp aTb: {aTb}")
         factor = gtsam.BetweenFactorPose3(
             X(a), X(b), aTb, self.icp_noise_model)
 
@@ -264,12 +275,12 @@ class Lidar2DWrapper:
         icp_noise_sigmas = rospy.get_param('/lidar2d/icp_noise')
         self.icp_noise_model = gtsam.noiseModel.Diagonal.Sigmas(
             np.array([
-                1e-10,
-                1e-10,
+                1e-4,
+                1e-4,
                 np.deg2rad(icp_noise_sigmas[2]),
                 icp_noise_sigmas[0],
                 icp_noise_sigmas[1],
-                1e-10
+                1e-3
             ])
         )
 

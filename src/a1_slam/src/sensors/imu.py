@@ -3,11 +3,9 @@
 """
 Class for processing IMU measurements.
 """
-import rospy
-
 import gtsam
 import numpy as np
-from a1_slam.srv import GetResults
+import rospy
 from gtsam.symbol_shorthand import B, V, X
 from optimization.optimizer import Optimizer
 from sensor_msgs.msg import Imu
@@ -25,6 +23,9 @@ class ImuWrapper():
         # Instantiate IMU related attributes.
         self.timestamp = 0
         self.seen_measurements = 0
+
+        # Determine if performing 2D SLAM.
+        self.perform_2d_slam = True
 
     ###################### Callbacks ######################
 
@@ -66,7 +67,7 @@ class ImuWrapper():
             self.create_and_add_factor(self.state_index - 1, self.state_index)
 
     ###################### Callable functions ######################
-    
+
     def create_and_add_factor(self, a, b):
         """Estimate aTb from IMU and add a corresponding IMU factor to the graph.
         Args:
@@ -91,6 +92,7 @@ class ImuWrapper():
         self.optimizer.optimize()
         self.state_index += 1
         self.seen_measurements = 0
+        # print("returning imu estimate aTb")
         return aTb
 
     ###################### Helper functions ######################
@@ -108,13 +110,17 @@ class ImuWrapper():
             measured_accel = np.array(msg.imu.accelerometer)
             measured_omega = np.array(msg.imu.gyroscope)
         elif type(msg) == Imu:
-            measured_accel, measured_omega = np.zeros((3,)), np.zeros((3,))
+            measured_accel = np.zeros((3,), dtype=np.float64)
+            measured_omega = np.zeros((3,), dtype=np.float64)
             measured_accel[0] = msg.linear_acceleration.x
             measured_accel[1] = msg.linear_acceleration.y
             measured_accel[2] = msg.linear_acceleration.z
             measured_omega[0] = msg.angular_velocity.x
             measured_omega[1] = msg.angular_velocity.y
             measured_omega[2] = msg.angular_velocity.z
+        if self.perform_2d_slam:
+            measured_accel[2] = 9.81
+            measured_omega[0] = measured_omega[1] = 0
         self.pim.integrateMeasurement(measured_accel, measured_omega, delta_t)
 
     def create_IMU_factor(self, a, b, navstate):
@@ -177,6 +183,8 @@ class ImuWrapper():
         pim_parameters.setIntegrationCovariance(integration_noise_cov)
         self.pim = gtsam.PreintegratedImuMeasurements(
             pim_parameters, prior_bias_estimate)
+        
+        self.perform_2d_slam = rospy.get_param('/perform_2D_SLAM')
 
     def reset(self, request):
         """Reset the IMU attributes. Used for integration tests."""
