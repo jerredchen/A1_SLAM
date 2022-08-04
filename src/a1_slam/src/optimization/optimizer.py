@@ -4,6 +4,7 @@ from threading import Lock
 import gtsam
 import numpy as np
 import rospy
+import tf2_ros
 from geometry_msgs.msg import PoseStamped, PoseWithCovarianceStamped
 from gtsam.symbol_shorthand import B, V, X
 from nav_msgs.msg import Path
@@ -31,6 +32,8 @@ class Optimizer:
         self.traj_publisher = rospy.Publisher(
             "/traj_estimate", Path, queue_size=5
         )
+
+        self.tf_broadcaster = tf2_ros.TransformBroadcaster()
 
         # Instantiate a threading lock.
         self.optimizer_lock = Lock()
@@ -180,7 +183,7 @@ class Optimizer:
         """
         pose_msg = PoseStamped()
         pose_msg.header.stamp = rospy.Time.now()
-        pose_msg.header.frame_id = "world"
+        pose_msg.header.frame_id = "map"
         pose_estimate = self.results.atPose3(key)
         pose_msg.pose.position.x = pose_estimate.x()
         pose_msg.pose.position.y = pose_estimate.y()
@@ -203,7 +206,7 @@ class Optimizer:
         """
         pose_msg = PoseWithCovarianceStamped()
         pose_msg.header.stamp = rospy.Time.now()
-        pose_msg.header.frame_id = "world"
+        pose_msg.header.frame_id = "map"
         pose_estimate = self.results.atPose3(key)
         pose_msg.pose.pose.position.x = pose_estimate.x()
         pose_msg.pose.pose.position.y = pose_estimate.y()
@@ -226,6 +229,6 @@ class Optimizer:
         """Publish a Path message of the robot's trajectory."""
         path_msg = Path()
         path_msg.header.stamp = rospy.Time.now()
-        path_msg.header.frame_id = "world"
+        path_msg.header.frame_id = "map"
         path_msg.poses = trajectory
         self.traj_publisher.publish(path_msg)
