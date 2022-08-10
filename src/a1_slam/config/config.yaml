@@ -5,7 +5,7 @@
   # Prior initial pose estimates and standard deviations,
   # formatted as [x, y, z, roll, pitch, yaw], in m and degrees.
   prior_pose_estimate: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-  prior_pose_sigmas: [1.0e-8, 1.0e-8, 1.0e-8, 1.0e-9, 1.0e-9, 1.0e-9],
+  prior_pose_sigmas: [1.0e-4, 1.0e-4, 1.0e-4, 0.01, 0.01, 0.01],
 
   # Whether to publish poses with pose covariances.
   publish_covariance: false,
@@ -40,11 +40,10 @@
     # accel_sigmas: [0.005171, 0.00334, 0.00660],
     accel_sigmas: [0.06381, 0.09469, 0.17038],
     # The sensor noise standard deviation of the gyroscope formatted as [x, y, z], in rad/s/sqrt(Hz).
-    gyro_sigmas: [0.000482, 0.000385, 0.000409],
-    # gyro_sigmas: [0.00671, 0.00727, 0.00421],
+    # gyro_sigmas: [0.000482, 0.000385, 0.000409],
+    gyro_sigmas: [0.00671, 0.00727, 0.00421],
     # The uncertainty standard deviation during integration formatted as [x, y, z].
     integration_sigmas: [1.0e-5, 1.0e-5, 1.0e-5]
-    # integration_sigmas: [1.0e-4, 1.0e-4, 1.0e-4]
 
   },
 
@@ -58,10 +57,10 @@
     topic: /slamware_ros_sdk_server_node/scan,
 
     # The noise standard deviation of registering two laser scans formatted as [x, y, theta], in m and degrees.
-    icp_noise: [1.0e-2, 1.0e-2, 1.0e-3],
+    icp_noise: [1.0e-2, 1.0e-2, 1.0],
 
     # The number of scans that should be compared for calculating skip connections.
-    submap_length: 24,
+    submap_length: 15,
 
     # The maximum threshold distance for forming correspondences during ICP.
     correspondence_threshold: 0.2,
@@ -76,14 +75,18 @@
   lidar3d: {
 
     # The topic name for the 3D LiDAR.
-    topic: /registered_point_cloud,
+    topic: /velodyne_points,
+
+    # The method to use for point cloud registration.
+    # Options are: teaser, gicp.
+    method: gicp,
 
     # The noise standard deviation of registering two laser clouds
     # formatted as [x, y, z, roll, pitch, yaw], in m and degrees.
-    icp_noise: [1.0e-2, 1.0e-2, 1.0e-2, 1.0e-3, 1.0e-3, 1.0e-3],
+    icp_noise: [1.0e-2, 1.0e-2, 1.0e-2, 1.0, 1.0, 1.0],
 
     # The number of scans that should be compared for calculating skip connections.
-    submap_length: 24,
+    submap_length: 15,
 
     # The maximum threshold distance for forming correspondences during ICP.
     correspondence_threshold: 0.2,
@@ -102,7 +105,26 @@
   depth: {
 
     # The topic name for the depth camera.
-    topic: /camera/depth/image_rect_raw
+    topic: /camera/depth/image_rect_raw,
+
+    # The method to use for point cloud registration.
+    # Options are: teaser, gicp.
+    method: teaser,
+
+    # The noise standard deviation of registering two laser clouds
+    # formatted as [x, y, z, roll, pitch, yaw], in m and degrees.
+    icp_noise: [1.0e-2, 1.0e-2, 1.0e-2, 1.0, 1.0, 1.0],
+
+    # The number of scans that should be compared for calculating skip connections.
+    submap_length: 15,
+
+    # The maximum threshold distance for forming correspondences during ICP.
+    correspondence_threshold: 0.2,
+
+    # The minimum range distance that should be considered from the depth point cloud.
+    min_range: 1.5,
+    # The maximum range distance that should be considered from the depth point cloud.
+    max_range: 5,
 
   }
 }

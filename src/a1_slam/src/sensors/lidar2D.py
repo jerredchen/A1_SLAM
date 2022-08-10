@@ -15,7 +15,6 @@ import rospy
 from gtsam.symbol_shorthand import X
 from sensor_msgs import point_cloud2
 from sensor_msgs.msg import LaserScan, PointCloud2
-from sklearn.neighbors import NearestNeighbors
 from std_msgs.msg import Header
 
 from optimization.optimizer import Optimizer
@@ -108,7 +107,7 @@ class Lidar2DWrapper:
             max_correspondence_distance=self.correspondence_threshold,
             initial_guess=aTb_estimate.matrix(),
             k_correspondences=15,
-            num_threads=2
+            num_threads=4
         )
 
         # Set z-translation to be 0 and convert back into Pose3 object.
@@ -152,7 +151,8 @@ class Lidar2DWrapper:
 
         # Ignore if is the first received measurement.
         if len(self.submap_scans) == 0:
-            self.submap_scans.append(scan_b)
+            with self.lidar2d_lock:
+                self.submap_scans.append(scan_b)
             return
         scan_a = self.submap_scans[-1]
 
@@ -166,7 +166,8 @@ class Lidar2DWrapper:
         )
         self.optimizer.add_factor(factor, (X(index_b), wTb_estimate))
         self.optimizer.optimize()
-        self.submap_scans.append(scan_b)
+        with self.lidar2d_lock:
+            self.submap_scans.append(scan_b)
 
         # Create skip connections to create a denser graph.
         with self.lidar2d_lock:
@@ -191,7 +192,6 @@ class Lidar2DWrapper:
                             where the last scan is the current scan.
             current_index: The state index associated with the current scan.
         """
-        start = time.time()
         submap_length = len(submap)
         for i in range(submap_length - 2):
             index_a = current_index - i - 2
@@ -201,11 +201,6 @@ class Lidar2DWrapper:
                 index_a,
                 index_b
             )
-        end = time.time()
-        print("-"*15)
-        print(f"total of {submap_length} scans: {end - start} s")
-        print(f"average for each connection: {(end - start) / submap_length} s")
-        # map(self.create_skip_connection, )
 
     def create_skip_connection(self, scans, index_a, index_b):
         """
