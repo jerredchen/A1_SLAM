@@ -34,8 +34,10 @@
     <node pkg="tf2_ros" type="static_transform_publisher" name="baseTimu"
         args="0 0 0 0 0 0 1 base_link imu"/>
     <node pkg="tf2_ros" type="static_transform_publisher" name="baseTlidar"
-        args="0.10944 0.01562 0.1244  0 0 0 1 base_link laser">
-    <node pkg="a1_slam" type="A1SlamNode.py" name="a1_slam_node"/>
+        args="0.10944 0.01562 0.1244  0 0 0 1 base_link laser"/>
+    <node pkg="tf2_ros" type="static_transform_publisher" name="baseTdepth"
+        args="0 0 0 -0.5 0.5 -0.5 0.5 base_link depth_optical_frame"/>
+    <node pkg="a1_slam" type="A1SlamNode.py" name="a1_slam_node" output="screen"/>
 
     <node type="rviz" name="rviz" pkg="rviz" args="-d $(find a1_slam)/rviz/a1_slam.rviz"
         if="$(arg launch_rviz)"/>

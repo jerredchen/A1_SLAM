@@ -6,6 +6,7 @@ Class for processing IMU measurements.
 import gtsam
 import numpy as np
 import rospy
+import tf2_ros
 from gtsam.symbol_shorthand import B, V, X
 from optimization.optimizer import Optimizer
 from sensor_msgs.msg import Imu
@@ -23,6 +24,7 @@ class ImuWrapper():
         # Instantiate IMU related attributes.
         self.timestamp = 0
         self.seen_measurements = 0
+        self.baseTimu = gtsam.Pose3()
 
         # Determine if performing 2D SLAM.
         self.perform_2d_slam = True
@@ -176,11 +178,33 @@ class ImuWrapper():
         prior_bias_estimate = gtsam.imuBias.ConstantBias(
             accel_bias, gyro_bias)
 
+        # Obtain the baseTimu static transform and convert to a GTSAM Pose3.
+        tf_buffer = tf2_ros.Buffer()
+        tf2_ros.TransformListener(tf_buffer)
+        rospy.sleep(1) # Sleep for one second to allow static transform to publish.
+        baseTdepth = tf_buffer.lookup_transform("base_link", "imu", rospy.Time())
+        translation = np.array([
+            baseTdepth.transform.translation.x,
+            baseTdepth.transform.translation.y,
+            baseTdepth.transform.translation.z,
+        ])
+        quaternion = np.array([
+            baseTdepth.transform.rotation.w,
+            baseTdepth.transform.rotation.x,
+            baseTdepth.transform.rotation.y,
+            baseTdepth.transform.rotation.z,
+        ])
+        baseTimu = gtsam.Pose3(
+            gtsam.Rot3.Quaternion(*quaternion),
+            translation
+        )
+
         # Instantiate the PIM parameters to create the PIM object.
         pim_parameters = gtsam.PreintegrationParams.MakeSharedU()
         pim_parameters.setAccelerometerCovariance(accel_noise_cov)
         pim_parameters.setGyroscopeCovariance(gyro_noise_cov)
         pim_parameters.setIntegrationCovariance(integration_noise_cov)
+        pim_parameters.setBodyPSensor(baseTimu)
         self.pim = gtsam.PreintegratedImuMeasurements(
             pim_parameters, prior_bias_estimate)
         

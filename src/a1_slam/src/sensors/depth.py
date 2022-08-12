@@ -11,6 +11,7 @@ import gtsam
 import numpy as np
 import pygicp
 import rospy
+import tf2_ros
 from gtsam.symbol_shorthand import X
 from optimization.optimizer import Optimizer
 from sensor_msgs import point_cloud2
@@ -35,6 +36,7 @@ class DepthWrapper:
         self.submap_clouds = []
         self.correspondence_threshold = 1.0
         self.icp_noise_model = gtsam.noiseModel.Diagonal.Sigmas(np.ones((6,)))
+        self.baseTdepth = gtsam.Pose3()
 
         # Instantiate a threading lock.
         self.depth_lock = Lock()
@@ -52,9 +54,9 @@ class DepthWrapper:
         points = [[point_vec.x, point_vec.y, point_vec.z]
                   for point_vec in point_vector_list
                   if min_range <= np.linalg.norm([
-                      point_vec.x(),
-                      point_vec.y(),
-                      point_vec.z()
+                      point_vec.x,
+                      point_vec.y,
+                      point_vec.z
                   ]) <= max_range]
         point_cloud = np.array(points).T
 
@@ -100,7 +102,7 @@ class DepthWrapper:
             max_correspondence_distance=self.correspondence_threshold,
             initial_guess=aTb_estimate.matrix(),
             k_correspondences=15,
-            num_threads=2
+            num_threads=4
         )
 
         # Convert back into Pose3 object.
@@ -129,16 +131,21 @@ class DepthWrapper:
         if imu and len(self.submap_clouds) > 0:
             aTb_estimate = imu.create_and_add_factor(index_a, index_b)
 
-        # Obtain the minimum and maximum ranges to use preprocessing.
+        # Obtain the minimum and maximum depths to use preprocessing.
         min_range = rospy.get_param('/depth/min_range')
         max_range = rospy.get_param('/depth/max_range')
 
-        # Preprocess the ranges into a 3D point cloud.
+        # Preprocess the depths, and transform the cloud into the base_link frame.
+        print("preprocessing...")
+        if self.state_index == 1:
+            print(msg.header.frame_id)
         cloud_b = self.preprocess_measurement(
             msg,
             min_range=min_range,
             max_range=max_range,
         )
+        print("preprocessed")
+        cloud_b = self.baseTdepth.transformFrom(cloud_b)
 
         # Ignore if is the first received measurement.
         if len(self.submap_clouds) == 0:
@@ -259,4 +266,25 @@ class DepthWrapper:
 
         self.method = rospy.get_param(
             '/depth/registration_method'
+        )
+
+        # Obtain the baseTdepth static transform and convert to a GTSAM Pose3.
+        tf_buffer = tf2_ros.Buffer()
+        tf2_ros.TransformListener(tf_buffer)
+        rospy.sleep(1) # Sleep for one second to allow static transform to publish.
+        baseTdepth = tf_buffer.lookup_transform("base_link", "camera_depth_optical_frame", rospy.Time())
+        translation = np.array([
+            baseTdepth.transform.translation.x,
+            baseTdepth.transform.translation.y,
+            baseTdepth.transform.translation.z,
+        ])
+        quaternion = np.array([
+            baseTdepth.transform.rotation.w,
+            baseTdepth.transform.rotation.x,
+            baseTdepth.transform.rotation.y,
+            baseTdepth.transform.rotation.z,
+        ])
+        self.baseTdepth = gtsam.Pose3(
+            gtsam.Rot3.Quaternion(*quaternion),
+            translation
         )
