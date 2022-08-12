@@ -2,12 +2,14 @@
 
 import rospy
 from a1_slam.srv import GetResults
-from sensor_msgs.msg import Imu, LaserScan
+from sensor_msgs.msg import Imu, LaserScan, PointCloud2
 from unitree_legged_msgs.msg import HighState
 
 from optimization.optimizer import Optimizer
 from sensors.imu import ImuWrapper
 from sensors.lidar2D import Lidar2DWrapper
+from sensors.lidar3D import Lidar3DWrapper
+from sensors.depth import DepthWrapper
 
 
 class A1SlamNode():
@@ -19,8 +21,9 @@ class A1SlamNode():
         # Check which sensors are selected to be used for SLAM.
         use_imu = rospy.get_param('/use_imu')
         use_2dlidar = rospy.get_param('/use_2dlidar')
+        use_3dlidar = rospy.get_param('/use_3dlidar')
         use_depth = rospy.get_param('/use_depth')
-        check_sensors = [use_imu, use_2dlidar, use_depth]
+        check_sensors = (use_imu, use_2dlidar, use_3dlidar, use_depth)
         if not any(check_sensors):
             rospy.logerr("No sensors were selected.")
 
@@ -44,13 +47,37 @@ class A1SlamNode():
 
         # Create a Lidar2D wrapper class that subscribes to laser scans.
         if use_2dlidar:
-            lidar = Lidar2DWrapper(optimizer)
-            lidar.initialize_params()
-            lidar_topic = rospy.get_param('/lidar2d/topic')
+            lidar2d = Lidar2DWrapper(optimizer)
+            lidar2d.initialize_params()
+            lidar2d_topic = rospy.get_param('/lidar2d/topic')
             rospy.Subscriber(
-                lidar_topic,
+                lidar2d_topic,
                 LaserScan,
-                lidar.lidar_callback,
+                lidar2d.lidar_callback,
+                callback_args=imu
+            )
+
+        # Create a Lidar3D wrapper class that subscribes to laser scans.
+        if use_3dlidar:
+            lidar3d = Lidar2DWrapper(optimizer)
+            lidar3d.initialize_params()
+            lidar3d_topic = rospy.get_param('/lidar3d/topic')
+            rospy.Subscriber(
+                lidar3d_topic,
+                PointCloud2,
+                lidar3d.lidar_callback,
+                callback_args=imu
+            )
+
+        # Create a Depth wrapper class that subscribes to laser scans.
+        if use_depth:
+            depth = DepthWrapper(optimizer)
+            depth.initialize_params()
+            depth_topic = rospy.get_param('/depth/topic')
+            rospy.Subscriber(
+                depth_topic,
+                PointCloud2,
+                depth.depth_callback,
                 callback_args=imu
             )
 

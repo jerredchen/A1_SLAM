@@ -4,6 +4,8 @@
     <param name="use_imu" value="$(arg use_imu)"/>
     <arg name="use_2dlidar" default="true"/>
     <param name="use_2dlidar" value="$(arg use_2dlidar)"/>
+    <arg name="use_3dlidar" default="false"/>
+    <param name="use_3dlidar" value="$(arg use_3dlidar)"/>
     <arg name="use_depth" default="false"/>
     <param name="use_depth" value="$(arg use_depth)"/>
 
@@ -16,11 +18,27 @@
 
     <!--Set configured parameters and launch nodes according to specified sensors.-->
     <rosparam file="$(find a1_slam)/config/config.yaml" />
-    <!-- <node pkg="tf2_ros" type="static_transform_publisher" name="baseTimu" args="0 0 0 0 0 0 1 base_link imu"/> -->
-    <!-- <node pkg="tf2_ros" type="static_transform_publisher" name="baseTlidar" args="0.10944 0.01562 0.1244  0 0 0 1 base_link /laser"> -->
-    <node pkg="a1_slam" type="A1SlamNode.py" name="a1_slam_node" output="screen"/>
 
-    <node type="rviz" name="rviz" pkg="rviz" args="-d $(find a1_slam)/rviz/a1_slam.rviz" if="$(arg launch_rviz)"/>
+    <!--Launch depth image processing nodelets if using depth images.-->
+    <group if="$(arg use_depth)">
+        <node pkg="nodelet" type="nodelet" name="nodelet_manager" args="manager" />
+
+        <node pkg="nodelet" type="nodelet" name="process_depth_nodelet"
+                args="load depth_image_proc/point_cloud_xyz nodelet_manager">
+            <remap from="camera_info" to="/camera/depth/camera_info"/>
+            <remap from="image_rect" to="/camera/depth/image_rect_raw"/>
+            <remap from="points" to="/camera/depth/points"/>
+        </node>
+    </group>
+
+    <node pkg="tf2_ros" type="static_transform_publisher" name="baseTimu"
+        args="0 0 0 0 0 0 1 base_link imu"/>
+    <node pkg="tf2_ros" type="static_transform_publisher" name="baseTlidar"
+        args="0.10944 0.01562 0.1244  0 0 0 1 base_link laser">
+    <node pkg="a1_slam" type="A1SlamNode.py" name="a1_slam_node"/>
+
+    <node type="rviz" name="rviz" pkg="rviz" args="-d $(find a1_slam)/rviz/a1_slam.rviz"
+        if="$(arg launch_rviz)"/>
     <node pkg="rosbag" type="record" name="results_rosbag" 
         args="record -a -o A1_results" if="$(arg record_rosbag)"/>
 
