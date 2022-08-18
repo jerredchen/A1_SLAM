@@ -21,6 +21,7 @@ catkin_python_setup()
 add_service_files(
   FILES
   GetResults.srv
+  PreprocessCloud.srv
 )
 
 # Generate added messages and services with any dependencies listed here
@@ -53,6 +54,10 @@ include_directories(
 # include
   ${catkin_INCLUDE_DIRS}
 )
+
+add_executable(preprocess_cloud_server src/nodes/PreprocessCloudServer.cpp)
+
+target_link_libraries(preprocess_cloud_server ${catkin_LIBRARIES})
 
 #############
 ## Install ##

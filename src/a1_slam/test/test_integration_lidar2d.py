@@ -3,13 +3,12 @@
 import gtsam
 import numpy as np
 import rospy
-from unitree_legged_msgs.msg import HighState
 from a1_slam.srv import GetResults
-from gtsam.symbol_shorthand import B, V, X
+from gtsam.symbol_shorthand import X
 from gtsam.utils.test_case import GtsamTestCase
 from geometry_msgs.msg import PoseStamped
 from nav_msgs.msg import Path
-from sensor_msgs.msg import LaserScan, PointCloud2
+from sensor_msgs.msg import LaserScan
 
 
 class TestA1Slam(GtsamTestCase):

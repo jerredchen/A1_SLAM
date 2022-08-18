@@ -12,6 +12,8 @@ import numpy as np
 import pygicp
 import rospy
 import tf2_ros
+import time
+from a1_slam.srv import PreprocessCloud
 from gtsam.symbol_shorthand import X
 from optimization.optimizer import Optimizer
 from sensor_msgs import point_cloud2
@@ -27,7 +29,9 @@ class DepthWrapper:
         self.cloud_publisher = rospy.Publisher(
             "/transformed_depth_clouds", PointCloud2, queue_size=5
         )
-
+        rospy.wait_for_service('preprocess_cloud')
+        self.preprocess_cloud = rospy.ServiceProxy(
+            'preprocess_cloud', PreprocessCloud)
         # Instantiate trajectory and optimizer related attributes.
         self.state_index = 1
         self.optimizer = optimizer
@@ -50,16 +54,12 @@ class DepthWrapper:
         Returns:
             cloud: A numpy array of shape (3, N), where N is the number of 3D points.
         """
-        point_vector_list = point_cloud2.read_points_list(msg)
-        points = [[point_vec.x, point_vec.y, point_vec.z]
-                  for point_vec in point_vector_list
-                  if min_range <= np.linalg.norm([
-                      point_vec.x,
-                      point_vec.y,
-                      point_vec.z
-                  ]) <= max_range]
-        point_cloud = np.array(points).T
-
+        start = time.time()
+        response = self.preprocess_cloud(msg)
+        point_cloud = np.array([response.x, response.y, response.z])
+        end = time.time()
+        print(f"preprocessing time: {end - start} s")
+        self.publish_transformed_cloud(point_cloud, 0)
         return point_cloud
 
     def create_depth_factor(self,
@@ -136,15 +136,11 @@ class DepthWrapper:
         max_range = rospy.get_param('/depth/max_range')
 
         # Preprocess the depths, and transform the cloud into the base_link frame.
-        print("preprocessing...")
-        if self.state_index == 1:
-            print(msg.header.frame_id)
         cloud_b = self.preprocess_measurement(
             msg,
             min_range=min_range,
             max_range=max_range,
         )
-        print("preprocessed")
         cloud_b = self.baseTdepth.transformFrom(cloud_b)
 
         # Ignore if is the first received measurement.
@@ -252,9 +248,9 @@ class DepthWrapper:
         icp_noise_sigmas = rospy.get_param('/depth/icp_noise')
         self.icp_noise_model = gtsam.noiseModel.Diagonal.Sigmas(
             np.array([
-                np.deg2rad(icp_noise_sigmas[0]),
-                np.deg2rad(icp_noise_sigmas[1]),
-                np.deg2rad(icp_noise_sigmas[2]),
+                np.deg2rad(icp_noise_sigmas[3]),
+                np.deg2rad(icp_noise_sigmas[4]),
+                np.deg2rad(icp_noise_sigmas[5]),
                 icp_noise_sigmas[0],
                 icp_noise_sigmas[1],
                 icp_noise_sigmas[2]

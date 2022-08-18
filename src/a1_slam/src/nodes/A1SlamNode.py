@@ -71,7 +71,6 @@ class A1SlamNode():
 
         # Create a Depth wrapper class that subscribes to laser scans.
         if use_depth:
-            print("use_depth == True")
             depth = DepthWrapper(optimizer)
             depth.initialize_params()
             depth_topic = rospy.get_param('/depth/topic')

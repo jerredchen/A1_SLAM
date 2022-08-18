@@ -22,9 +22,9 @@ def listener():
 
     pose_values = gtsam.utilities.allPose3s(values)
     pose_keys = pose_values.keys()
-    bag = rosbag.Bag('/home/jerredchen/A1_trajs_06-04-2022/A1_bag_fast_2022-03-05-06-49-12.bag')
+    bag = rosbag.Bag('/home/jerredchen/A1_trajs_06-04-2022/A1_bag_2022-03-05-07-01-07.bag')
     msgs = list(bag.read_messages('/slamware_ros_sdk_server_node/scan'))
-    with open('traj2_a1_slam.txt', 'w') as f:
+    with open('traj5_a1_slam.txt', 'w') as f:
         for i, pose_key in enumerate(pose_keys):
             pose = pose_values.atPose3(pose_key)
             tx, ty, tz = pose.translation()

@@ -60,7 +60,7 @@
     icp_noise: [1.0e-2, 1.0e-2, 1.0],
 
     # The number of scans that should be compared for calculating skip connections.
-    submap_length: 15,
+    submap_length: 20,
 
     # The maximum threshold distance for forming correspondences during ICP.
     correspondence_threshold: 0.2,
@@ -116,7 +116,7 @@
     icp_noise: [1.0e-2, 1.0e-2, 1.0e-2, 1.0, 1.0, 1.0],
 
     # The number of scans that should be compared for calculating skip connections.
-    submap_length: 3,
+    submap_length: 1,
 
     # The maximum threshold distance for forming correspondences during ICP.
     correspondence_threshold: 0.2,
