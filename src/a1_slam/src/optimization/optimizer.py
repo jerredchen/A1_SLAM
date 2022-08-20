@@ -118,9 +118,6 @@ class Optimizer:
         # Perform an iSAM2 incremental update.
         self.isam.update(self.graph, self.initial_estimates)
         self.results = self.isam.calculateEstimate()
-        # print("*"*20)
-        # if self.results.size() > 3:
-        #     print(self.results)
         self.poses_queue.extend(temp_queue)
 
         # Clear the graph and initial estimates.

@@ -23,7 +23,7 @@
     topic: /HighState,
 
     # The number of measurements that the IMU should preintegrate before adding an IMU factor.
-    # Used if IMU is the only sensor selected.
+    # Used if only proprioceptive sensors are selected.
     imu_factor_rate: 50,
 
     # Prior initial velocity estimates and standard deviations, formatted as [x, y, z], in m/s.
@@ -60,7 +60,7 @@
     icp_noise: [1.0e-2, 1.0e-2, 1.0],
 
     # The number of scans that should be compared for calculating skip connections.
-    submap_length: 20,
+    submap_length: 12,
 
     # The maximum threshold distance for forming correspondences during ICP.
     correspondence_threshold: 0.2,

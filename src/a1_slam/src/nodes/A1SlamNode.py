@@ -59,7 +59,7 @@ class A1SlamNode():
 
         # Create a Lidar3D wrapper class that subscribes to laser scans.
         if use_3dlidar:
-            lidar3d = Lidar2DWrapper(optimizer)
+            lidar3d = Lidar3DWrapper(optimizer)
             lidar3d.initialize_params()
             lidar3d_topic = rospy.get_param('/lidar3d/topic')
             rospy.Subscriber(
@@ -84,7 +84,7 @@ class A1SlamNode():
         optimizer.optimize()
 
         # Create a pose publisher that publishes the pose from the results.
-        rospy.Timer(rospy.Duration(0.1), optimizer.pose_callback)
+        rospy.Timer(rospy.Duration(0.05), optimizer.pose_callback)
 
         # Create a trajectory publisher that publishes the trajectory of results.
         rospy.Timer(rospy.Duration(1.0), optimizer.trajectory_callback)
