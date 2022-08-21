@@ -23,7 +23,7 @@
     topic: /HighState,
 
     # The number of measurements that the IMU should preintegrate before adding an IMU factor.
-    # Used if IMU is the only sensor selected.
+    # Used if only proprioceptive sensors are selected.
     imu_factor_rate: 50,
 
     # Prior initial velocity estimates and standard deviations, formatted as [x, y, z], in m/s.
@@ -60,7 +60,7 @@
     icp_noise: [1.0e-2, 1.0e-2, 1.0],
 
     # The number of scans that should be compared for calculating skip connections.
-    submap_length: 15,
+    submap_length: 12,
 
     # The maximum threshold distance for forming correspondences during ICP.
     correspondence_threshold: 0.2,
@@ -105,18 +105,18 @@
   depth: {
 
     # The topic name for the depth camera.
-    topic: /camera/depth/image_rect_raw,
+    topic: /camera/depth/points,
 
     # The method to use for point cloud registration.
     # Options are: teaser, gicp.
-    method: teaser,
+    registration_method: teaser,
 
     # The noise standard deviation of registering two laser clouds
     # formatted as [x, y, z, roll, pitch, yaw], in m and degrees.
     icp_noise: [1.0e-2, 1.0e-2, 1.0e-2, 1.0, 1.0, 1.0],
 
     # The number of scans that should be compared for calculating skip connections.
-    submap_length: 15,
+    submap_length: 1,
 
     # The maximum threshold distance for forming correspondences during ICP.
     correspondence_threshold: 0.2,

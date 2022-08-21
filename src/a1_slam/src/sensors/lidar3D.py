@@ -11,6 +11,7 @@ import gtsam
 import numpy as np
 import pygicp
 import rospy
+import tf2_ros
 from gtsam.symbol_shorthand import X
 from optimization.optimizer import Optimizer
 from sensor_msgs import point_cloud2
@@ -35,6 +36,7 @@ class Lidar3DWrapper:
         self.submap_clouds = []
         self.correspondence_threshold = 1.0
         self.icp_noise_model = gtsam.noiseModel.Diagonal.Sigmas(np.ones((6,)))
+        self.baseTlidar = gtsam.Pose3()
 
         # Instantiate a threading lock.
         self.lidar3d_lock = Lock()
@@ -52,9 +54,9 @@ class Lidar3DWrapper:
         points = [[point_vec.x, point_vec.y, point_vec.z]
                   for point_vec in point_vector_list
                   if min_range <= np.linalg.norm([
-                      point_vec.x(),
-                      point_vec.y(),
-                      point_vec.z()
+                      point_vec.x,
+                      point_vec.y,
+                      point_vec.z
                   ]) <= max_range]
         point_cloud = np.array(points).T
 
@@ -133,12 +135,13 @@ class Lidar3DWrapper:
         min_range = rospy.get_param('/lidar3d/min_range')
         max_range = rospy.get_param('/lidar3d/max_range')
 
-        # Preprocess the ranges into a 3D LIDAR cloud.
+        # Preprocess the ranges, and transform the cloud into the base_link frame.
         cloud_b = self.preprocess_measurement(
             msg,
             min_range=min_range,
             max_range=max_range,
         )
+        cloud_b = self.baseTlaser.transformFrom(cloud_b)
 
         # Ignore if is the first received measurement.
         if len(self.submap_clouds) == 0:
@@ -256,3 +259,24 @@ class Lidar3DWrapper:
 
         self.correspondence_threshold = rospy.get_param(
             '/lidar3d/correspondence_threshold')
+
+        # Obtain the baseTlidar static transform and convert to a GTSAM Pose3.
+        tf_buffer = tf2_ros.Buffer()
+        tf2_ros.TransformListener(tf_buffer)
+        rospy.sleep(1) # Sleep for one second to allow static transform to publish.
+        baseTlaser = tf_buffer.lookup_transform("base_link", "laser", rospy.Time())
+        translation = np.array([
+            baseTlaser.transform.translation.x,
+            baseTlaser.transform.translation.y,
+            baseTlaser.transform.translation.z,
+        ])
+        quaternion = np.array([
+            baseTlaser.transform.rotation.w,
+            baseTlaser.transform.rotation.x,
+            baseTlaser.transform.rotation.y,
+            baseTlaser.transform.rotation.z,
+        ])
+        self.baseTlaser = gtsam.Pose3(
+            gtsam.Rot3.Quaternion(*quaternion),
+            translation
+        )
