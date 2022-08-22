@@ -19,4 +19,4 @@ catkin_make
 
 ## Documentation and Usage
 
-For more information on using A1 SLAM, please see the documentation.
+For more information on using A1 SLAM, please see the [documentation](a1-slam.rtfd.io).
