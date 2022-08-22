@@ -1,7 +1,7 @@
 A1 SLAM: Quadruped SLAM using the A1's onboard sensors
 ======================================================
 
-.. image:: misc/a1_slam_trajectory.gif
+.. image:: /misc/a1_slam_trajectory.gif
 
 A1 SLAM is a rospackage that brings real-time SLAM capabilities utilizing factor graph optimization to Unitree's A1 quadruped.
 
