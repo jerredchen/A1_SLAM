@@ -1,6 +1,8 @@
 A1 SLAM: Quadruped SLAM using the A1's onboard sensors
 ======================================================
 
+.. image:: misc/a1_slam_trajectory.gif
+
 A1 SLAM is a rospackage that brings real-time SLAM capabilities utilizing factor graph optimization to Unitree's A1 quadruped.
 
 .. note::
@@ -14,7 +16,7 @@ Performance
 ^^^^^^^^^^^
 
 A1 SLAM yields SLAM results competitive to the most prominent SLAM algorithms. Below are benchmarked Absolute Pose Error (APE) results compared to 
-out-of-the-box `Cartographer <https://github.com/cartographer-project/cartographer/>`_ , one of the most widely-used 2D SLAM libraries available.
+out-of-the-box `Cartographer <https://github.com/cartographer-project/cartographer/>`_, one of the most widely-used 2D SLAM libraries available.
 The baseline was obtained using motion capture data.
 
 =============  =============  =============  =============  =============
