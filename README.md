@@ -2,6 +2,8 @@
 
 ![a1_slam_trajectory](misc/a1_slam_trajectory.gif)
 
+**Note:** This repository is still under active development.
+
 A1 SLAM is a rospackage that brings real-time SLAM capabilities utilizing factor graph optimization to Unitree's A1 quadruped. This package was designed around the onboard sensors on the A1 and aims for easy, convenient installation. In addition, this package is compatible with sensors that are not default to the A1.
 
 This package has been tested using ROS Noetic on Ubuntu 20.04.
