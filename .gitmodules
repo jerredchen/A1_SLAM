@@ -1,0 +1,3 @@
+[submodule "src/fast_gicp"]
+	path = src/fast_gicp
+	url = https://github.com/jerredchen/fast_gicp.git
