@@ -1,7 +1,2 @@
 __pycache__/
 .vscode/
-build/
-build_isolated/
-devel/
-devel_isolated/
-install_isolated/
