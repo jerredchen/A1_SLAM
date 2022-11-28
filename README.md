@@ -1,6 +1,6 @@
 # A1 SLAM: Quadruped SLAM using the A1's onboard sensors
 
-![a1_slam_trajectory](misc/a1_slam_trajectory.gif)
+![a1_slam_trajectory](media/a1_slam_trajectory.gif)
 
 **Note:** This repository is still under active development.
 
@@ -13,9 +13,12 @@ This package has been tested using ROS Noetic on Ubuntu 20.04.
 If you haven't install ROS already, please follow the steps for [ROS installation](http://wiki.ros.org/ROS/Installation).
 
 ```
+# Install GTSAM as dependency if necessary
 pip install --user gtsam
-git clone https://github.com/jerredchen/A1_SLAM.git
-cd A1_SLAM && mkdir A1_SLAM
+mkdir -p catkin_ws/src
+cd catkin_ws/src
+git clone https://github.com/jerredchen/A1_SLAM.git --recursive
+cd ..
 catkin_make
 ```
 
