@@ -33,6 +33,8 @@ A1 SLAM is intentionally designed around using the sensors that are already onbo
  * Algorithms tested on the onboard sensors for obtaining good performance
  * Documentation is provided for obtaining onboard sensor data (that may not be clearly documented elsewhere)
 
+For more information on the A1 SLAM, please see the arXiv preprint `here. <https://arxiv.org/abs/2211.14432>`_
+
 Contents
 --------
 
