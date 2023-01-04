@@ -31,11 +31,6 @@
         </node>
     </group>
 
-    <!--Launch the preprocess cloud server if performing 3D registration.-->
-    <group if="$(eval use_depth or use_3dlidar)">
-        <node pkg="a1_slam" type="preprocess_cloud_server" name="cloud_server"/>
-    </group>
-
     <node pkg="tf2_ros" type="static_transform_publisher" name="baseTimu"
         args="0 0 0 0 0 0 1 base_link imu"/>
     <node pkg="tf2_ros" type="static_transform_publisher" name="baseTlidar"
