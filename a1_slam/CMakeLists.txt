@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.0.2)
 project(a1_slam)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
-# add_compile_options(-std=c++11)
+add_compile_options(-std=c++11)
 
 ## Find catkin macros and libraries
 find_package(catkin REQUIRED COMPONENTS
@@ -21,7 +21,6 @@ catkin_python_setup()
 add_service_files(
   FILES
   GetResults.srv
-  PreprocessCloud.srv
 )
 
 # Generate added messages and services with any dependencies listed here
@@ -36,12 +35,15 @@ generate_messages(
 ## catkin specific configuration ##
 ###################################
 
+find_package(GTSAM REQUIRED)
+
 catkin_package(
+  DEPENDS GTSAM
   CATKIN_DEPENDS
   message_runtime
   std_msgs
   geometry_msgs
-  sensor_msgs 
+  sensor_msgs
 )
 
 ###########
@@ -51,13 +53,15 @@ catkin_package(
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
 include_directories(
-# include
+  include
   ${catkin_INCLUDE_DIRS}
+  ${GTSAM_INCLUDE_DIR}
 )
 
-add_executable(preprocess_cloud_server src/nodes/PreprocessCloudServer.cpp)
+add_executable(cpp_slam src/nodes/A1SlamNode.cpp)
 
-target_link_libraries(preprocess_cloud_server ${catkin_LIBRARIES})
+target_link_libraries(cpp_slam ${catkin_LIBRARIES})
+
 
 #############
 ## Install ##

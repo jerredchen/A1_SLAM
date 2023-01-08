@@ -1,86 +1,94 @@
-#include "ros/ros.h"
-#include "gtsam/geometry/Pose3.h"
-#include "gtsam/geometry/Rot3.h"
-#include "gtsam/geometry/Point3.h"
-#include "gtsam/inference/Symbol.h"
-#include "gtsam/nonlinear/ISAM2.h"
-#include "gtsam/nonlinear/NonlinearFactorGraph.h"
-#include "gtsam/slam/BetweenFactor.h"
-#include "tf2_ros/transform_broadcaster.h"
-#include "geometry_msgs/PoseStamped.h"
-#include "geometry_msgs/PoseWithCovarianceStamped.h"
-#include "nav_msgs/Path.h"
+#include "a1_slam/include/optimization/optimizer.h"
 
-using namespace gtsam;
-using symbol_shorthand::X;
+/* **************************  Helper Methods ************************** */
 
-class Optimizer
+geometry_msgs::TransformStamped a1_slam::Optimizer::process_tf_message(gtsam::Key key)
 {
-private:
-  // Relevant optimizer data structures.
-  static std::deque<NoiseModelFactor> factor_queue;
-  static std::deque<Pose3> pose_queue;
+  geometry_msgs::TransformStamped tf_msg;
+  tf_msg.header.stamp = ros::Time::now();
+  tf_msg.header.frame_id = "map";
+  tf_msg.child_frame_id = "odom";
+  gtsam::Pose3 pose_estimate = results.at<gtsam::Pose3>(key);
+  tf_msg.transform.translation.x = pose_estimate.x();
+  tf_msg.transform.translation.y = pose_estimate.y();
+  tf_msg.transform.translation.z = pose_estimate.z();
+  gtsam::Vector quaternion = pose_estimate.rotation().quaternion();
+  tf_msg.transform.rotation.w = quaternion[0];
+  tf_msg.transform.rotation.x = quaternion[1];
+  tf_msg.transform.rotation.y = quaternion[2];
+  tf_msg.transform.rotation.z = quaternion[3];
+  return tf_msg;
+}
 
-  // Factor graph data structures.
-  static ISAM2 isam2;
-  static NonlinearFactorGraph graph;
-  static Values initial_estimates;
-  static Values results;
+/* ************************** Optimization Methods ************************** */
 
-  ros::NodeHandle optimizer_nh;
-  static tf2_ros::TransformBroadcaster tf_broadcaster;
+void a1_slam::Optimizer::add_priors()
+{
+  // Parse the prior pose estimate and standard deviation parameters.
+  std::vector<double> param_estimate, param_sigmas;
+  optimizer_nh.getParam("/prior_pose_estimate", param_estimate);
+  optimizer_nh.getParam("/prior_pose_sigmas", param_sigmas);
+  gtsam::Rot3 pose_rotation = gtsam::Rot3::Ypr(
+      M_PI / 180 * param_estimate[2],
+      M_PI / 180 * param_estimate[1],
+      M_PI / 180 * param_estimate[0]);
+  gtsam::Point3 pose_translation(param_estimate[3], param_estimate[4], param_estimate[5]);
+  gtsam::Pose3 prior_pose(pose_rotation, pose_translation);
+  Eigen::VectorXd sigmas(6);
+  sigmas << M_PI / 180 * param_sigmas[3],
+      M_PI / 180 * param_sigmas[4],
+      M_PI / 180 * param_sigmas[5],
+      param_sigmas[0],
+      param_sigmas[1],
+      param_sigmas[2];
+  gtsam::noiseModel::Diagonal::shared_ptr prior_noise = gtsam::noiseModel::Diagonal::Sigmas(sigmas);
 
-public:
-  /* ************************** Optimization Methods ************************** */
+  // Create a GTSAM PriorFactor<Pose3> and add the factor to the factor graph.
+  gtsam::PriorFactor<gtsam::Pose3> prior_pose_factor =
+      gtsam::PriorFactor<gtsam::Pose3>(gtsam::symbol_shorthand::X(0), prior_pose, prior_noise);
+  add_factor(prior_pose_factor);
+  insert_initial_estimate(gtsam::symbol_shorthand::X(0), prior_pose_factor.prior());
 
-  void add_priors()
-  {
-    // Parse the prior pose estimate and standard deviation parameters.
-    std::vector<double> param_estimate, param_sigmas;
-    optimizer_nh.getParam("/prior_pose_estimate", param_estimate);
-    optimizer_nh.getParam("/prior_pose_sigmas", param_sigmas);
-    Rot3 pose_rotation = Rot3::Ypr(
-        M_PI / 180 * param_estimate[2],
-        M_PI / 180 * param_estimate[1],
-        M_PI / 180 * param_estimate[0]);
-    Point3 pose_translation(param_estimate[3], param_estimate[4], param_estimate[5]);
-    Pose3 prior_pose(pose_rotation, pose_translation);
-    Eigen::VectorXd sigmas(6);
-    sigmas << M_PI / 180 * param_sigmas[3],
-        M_PI / 180 * param_sigmas[4],
-        M_PI / 180 * param_sigmas[5],
-        param_sigmas[0],
-        param_sigmas[1],
-        param_sigmas[2];
-    noiseModel::Diagonal::shared_ptr prior_noise = noiseModel::Diagonal::Sigmas(sigmas);
+  // Optimize the graph.
+  optimize();
+}
 
-    // Create a GTSAM PriorFactor<Pose3> and add the factor to the factor graph.
-    PriorFactor<Pose3> prior_pose_factor =
-        PriorFactor<Pose3>(X(0), prior_pose, prior_noise);
-    graph.add(prior_pose_factor);
-    initial_estimates.insert(X(0), prior_pose_factor.prior());
+template <typename FACTOR_OR_CONTAINER>
+void a1_slam::Optimizer::add_factor(const FACTOR_OR_CONTAINER &factor)
+{
+  std::lock_guard<std::mutex> lock(mtx);
+  graph.add(factor);
+}
 
-    // Optimize the graph.
-    optimize();
-  }
+template <typename VALUE>
+void a1_slam::Optimizer::insert_initial_estimate(gtsam::Key key, const VALUE &value)
+{
+  std::lock_guard<std::mutex> lock(mtx);
+  initial_estimates.insert(key, value);
+  temp_key = std::max(temp_key, key);
+}
 
-  void optimize()
-  {
-    // Perform an iSAM2 incremental update.
-    isam2.update(graph, initial_estimates);
-    results = isam2.calculateEstimate();
+void a1_slam::Optimizer::optimize()
+{
+  std::lock_guard<std::mutex> lock(mtx);
+  // Perform an iSAM2 incremental update.
+  isam2.update(graph, initial_estimates);
+  results = isam2.calculateEstimate();
 
-    // Clear the graph and initial estimates.
-    graph.resize(0);
-    initial_estimates.clear();
-  }
+  // Update the global key with the temporary key.
+  global_key = temp_key;
 
-  /* ************************** Callbacks ************************** */
+  // Clear the graph and initial estimates.
+  graph.resize(0);
+  initial_estimates.clear();
+}
 
-  /* ************************** Preprocessing helpers ************************** */
-
-  
-};
+template <typename VALUE>
+VALUE a1_slam::Optimizer::get_result_value(gtsam::Key key)
+{
+  std::lock_guard<std::mutex> lock(mtx);
+  return results.at(key);
+}
 
 int main(int argc, char **argv)
 {
